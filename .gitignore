@@ -1,0 +1,5 @@
+﻿.idea
+Telegram.Bot.Routing/obj
+Telegram.Bot.Routing.Example/obj
+*.user
+Telegram.Bot.Routing.Example/Properties/launchSettings.json
