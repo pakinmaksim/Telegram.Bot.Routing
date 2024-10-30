@@ -6,30 +6,24 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <RootNamespace>Telegram.Bot.Routing</RootNamespace>
-        <PackageIcon>icon.png</PackageIcon>
-        <PackageProjectUrl>https://github.com/pakinmaksim/Telegram.Bot.Routing</PackageProjectUrl>
-        <RepositoryUrl>https://github.com/pakinmaksim/Telegram.Bot.Routing.git</RepositoryUrl>
-    </PropertyGroup>
-    
-    <PropertyGroup>
+
+        <IsPackable>true</IsPackable>
         <PackageId>Telegram.Bot.Routing</PackageId>
         <Authors>Pakin Maksim</Authors>
         <Description>A routing library for Telegram.Bot that adds context to events, allowing developers to focus on business logic without handling specific states.</Description>
         <Summary>A library to simplify handling of Telegram bot events through routing and context management.</Summary>
         <PackageTags>telegram bot routing context csharp</PackageTags>
+        <PackageIcon>icon.png</PackageIcon>
+        <PackageProjectUrl>https://github.com/pakinmaksim/Telegram.Bot.Routing</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/pakinmaksim/Telegram.Bot.Routing.git</RepositoryUrl>
         <RepositoryType>git</RepositoryType>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageOutputPath>$(OutputPath)</PackageOutputPath>
-    </PropertyGroup>
-    
-    <PropertyGroup>
-        <Version>1.0.0</Version>
+        
         <PackageReleaseNotes>Initial release with basic routing and context management for Telegram bot events.</PackageReleaseNotes>
-    </PropertyGroup>
-    
-    <PropertyGroup>
+        
         <EnablePackageValidation>true</EnablePackageValidation>
         <!--<PackageValidationBaselineVersion>1.0.0</PackageValidationBaselineVersion>-->
         <GenerateDocumentationFile>True</GenerateDocumentationFile>
