@@ -9,6 +9,7 @@ namespace Telegram.Bot.Routing.Contexts.Messages;
 
 public class TelegramMessageContext : TelegramChatContext
 {
+    private bool _isMessageSaved = true;
     public IMessage Message { get; private set; } = null!;
     
     public TelegramMessageContext(
@@ -69,7 +70,9 @@ public class TelegramMessageContext : TelegramChatContext
                 ct: ct
             );
         }
-        return Message = result;
+        Message = result;
+        _isMessageSaved = false;
+        return Message;
     }
 
     public async Task<IMessage> SetKeyboard(
@@ -87,13 +90,16 @@ public class TelegramMessageContext : TelegramChatContext
             routerData: Message.RouterData,
             ct: ct
         );
-        return Message = result;
+        Message = result;
+        _isMessageSaved = false;
+        return Message;
     }
     
     public void SetMessageRouter(string? routerName, object? routerData)
     {
         Message.RouterName = routerName;
         Message.RouterData = Serializer.SerializeNullable(routerData);
+        _isMessageSaved = false;
     }
     
     public void SetMessageRouter<TMessageRouter>(object? routerData = null)
@@ -102,10 +108,23 @@ public class TelegramMessageContext : TelegramChatContext
         var routerName = Routing.GetChatRouterName(typeof(TMessageRouter));
         SetMessageRouter(routerName, routerData);
     }
+    
+    public T? GetMessageRouterData<T>()
+    {
+        return (T?) Serializer.DeserializeNullable(Message.RouterData, typeof(T));
+    }
+    
+    public void SetMessageRouterData(object? routerData)
+    {
+        Message.RouterData = Serializer.SerializeNullable(routerData);
+        _isMessageSaved = false;
+    }
 
     public async Task SaveMessage(CancellationToken ct = default)
     {
         if (!Message.IsCreated) return;
+        if (_isMessageSaved) return;
         await Storage.SetMessage(Message, ct);
+        _isMessageSaved = true;
     }
 }

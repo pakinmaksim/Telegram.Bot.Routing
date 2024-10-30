@@ -6,7 +6,7 @@ namespace Telegram.Bot.Routing.Example.Telegram.Common;
 [ChatRouter("no_messages")]
 public class NoMessagesChatRouter : ChatRouter
 {
-    [MessageRoute("any", isDefault: true)]
+    [MessageRoute("default", isDefault: true)]
     public async Task Default(CancellationToken ct)
     {
         var data = Context.GetChatRouterData<NoMessagesData>();

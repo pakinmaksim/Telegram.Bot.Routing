@@ -34,11 +34,14 @@ public class TelegramBotRoutingSystem
     public async Task HandleUpdate(Update update, CancellationToken ct = default)
     {
         try
-        {
+        { 
+            await using var scope = CreateTelegramScope(update);
+            var context = scope.ServiceProvider.GetRequiredService<TelegramContext>();
+            
             await (update.Type switch
             {
-                UpdateType.Message => HandleMessage(update, ct),
-                UpdateType.CallbackQuery => HandleCallbackQuery(update, ct),
+                UpdateType.Message => HandleMessage(context, ct),
+                UpdateType.CallbackQuery => HandleCallbackQuery(context, ct),
                 _ => Task.CompletedTask
             });
         }
@@ -58,55 +61,65 @@ public class TelegramBotRoutingSystem
         return serviceProvider.GetRequiredService<TTelegramContext>();
     }
 
-    public async Task<AsyncServiceScope> CreateChatScope(
-        Chat chat,
-        Update? update = null,
-        CancellationToken ct = default)
+    public AsyncServiceScope CreateTelegramScope(
+        Update? update = null)
     {
         var scope = _serviceProvider.CreateAsyncScope();
-        var context = SetupTelegramContext<TelegramChatContext>(scope.ServiceProvider, update);
-        await context.InitializeChat(chat, ct);
+        SetupTelegramContext<TelegramContext>(scope.ServiceProvider, update);
         return scope;
     }
     
     public async Task<AsyncServiceScope> CreateChatScope(
         long chatId,
-        Update? update = null,
+        TelegramContext? telegramContext = null,
         CancellationToken ct = default)
     {
         var scope = _serviceProvider.CreateAsyncScope();
-        var context = SetupTelegramContext<TelegramChatContext>(scope.ServiceProvider, update);
-        await context.InitializeChat(chatId, ct);
+        var context = SetupTelegramContext<TelegramChatContext>(scope.ServiceProvider, telegramContext?.Update);
+        await context.InitializeChat(chatId, ct); 
+        return scope;
+    }
+
+    public async Task<AsyncServiceScope> CreateChatScope(
+        Chat chat,
+        TelegramContext? telegramContext = null,
+        CancellationToken ct = default)
+    {
+        var scope = _serviceProvider.CreateAsyncScope();
+        var context = SetupTelegramContext<TelegramChatContext>(scope.ServiceProvider, telegramContext?.Update);
+        await context.InitializeChat(chat, ct);
+        return scope;
+    }
+
+    public async Task<AsyncServiceScope> CreateMessageScope(
+        long chatId,
+        int messageId,
+        TelegramChatContext? chatContext = null,
+        CancellationToken ct = default)
+    {
+        var scope = _serviceProvider.CreateAsyncScope();
+        var context = SetupTelegramContext<TelegramMessageContext>(scope.ServiceProvider, chatContext?.Update);
+        if (chatContext != null) context.InitializeChat(chatContext.Chat);
+        else await context.InitializeChat(chatId, ct);
+        await context.InitializeMessage(messageId, ct);
         return scope;
     }
 
     public async Task<AsyncServiceScope> CreateMessageScope(
         Message message,
-        Update? update = null,
+        TelegramChatContext? chatContext = null,
         CancellationToken ct = default)
     {
         var scope = _serviceProvider.CreateAsyncScope();
-        var context = SetupTelegramContext<TelegramMessageContext>(scope.ServiceProvider, update);
-        await context.InitializeChat(message.Chat, ct);
+        var context = SetupTelegramContext<TelegramMessageContext>(scope.ServiceProvider, chatContext?.Update);
+        if (chatContext != null) context.InitializeChat(chatContext.Chat);
+        else await context.InitializeChat(message.Chat, ct);
         await context.InitializeMessage(message, ct);
         return scope;
     }
 
-    public async Task<AsyncServiceScope> CreateMessageScope(
-        long chatId, 
-        int messageId,
-        Update? update = null,
-        CancellationToken ct = default)
-    {
-        var scope = _serviceProvider.CreateAsyncScope();
-        var context = SetupTelegramContext<TelegramMessageContext>(scope.ServiceProvider, update);
-        await context.InitializeChat(chatId, ct);
-        await context.InitializeMessage(messageId, ct);
-        return scope;
-    }
-
     public async Task<AsyncServiceScope> CreateNewMessageScope(
-        long chatId, 
+        long chatId,
         string routerName,
         object? routerData,
         CancellationToken ct = default)
@@ -118,17 +131,32 @@ public class TelegramBotRoutingSystem
         return scope;
     }
 
-    private async Task HandleMessage(Update update, CancellationToken ct)
+    public async Task<AsyncServiceScope> CreateNewMessageScope(
+        TelegramChatContext chatContext,
+        string routerName,
+        object? routerData,
+        CancellationToken ct = default)
+    {
+        var scope = _serviceProvider.CreateAsyncScope();
+        var context = SetupTelegramContext<TelegramMessageContext>(scope.ServiceProvider, chatContext.Update);
+        context.InitializeChat(chatContext.Chat);
+        await context.InitializeMessage(routerName, routerData, ct);
+        return scope;
+    }
+
+    private async Task HandleMessage(TelegramContext telegramContext, CancellationToken ct)
     {
         // Extract key values of update
+        var update = telegramContext.Update!;
         var message = update.Message!;
         var chat = message.Chat;
         var user = message.From;
 
         // Setup current context
-        await using var scope = await CreateChatScope(chat, update, ct);
+        await using var chatScope = await CreateChatScope(chat, telegramContext, ct);
+        var context = chatScope.ServiceProvider.GetRequiredService<TelegramChatContext>();
         
-        var context = scope.ServiceProvider.GetRequiredService<TelegramChatContext>();
+        // Reconstruct received values
         await context.ReconstructMessage(message, null, null, ct);
         if (user != null) await context.ReconstructUser(user, ct);
         
@@ -139,17 +167,22 @@ public class TelegramBotRoutingSystem
         await context.SaveChat(ct);
     }
 
-    private async Task HandleCallbackQuery(Update update, CancellationToken ct)
+    private async Task HandleCallbackQuery(TelegramContext telegramContext, CancellationToken ct)
     {
         // Extract key values of update
+        var update = telegramContext.Update!;
         var callbackQuery = update.CallbackQuery!;
         var message = callbackQuery.Message!;
+        var chat = message.Chat;
         var user = callbackQuery.From;
         
         // Setup current context
-        await using var scope = await CreateMessageScope(message, update, ct);
-        
+        await using var chatScope = await CreateChatScope(chat, telegramContext, ct);
+        var chatContext = chatScope.ServiceProvider.GetRequiredService<TelegramChatContext>();
+        await using var scope = await CreateMessageScope(message, chatContext, ct);
         var context = scope.ServiceProvider.GetRequiredService<TelegramMessageContext>();
+        
+        // Reconstruct received values
         await context.ReconstructUser(user, ct);
         
         // Call route
@@ -178,13 +211,33 @@ public class TelegramBotRoutingSystem
     private DefinedRoute? GetMessageRoute(string routerName, string? routeName)
     {
         var router = GetChatRouter(routerName);
-        if (routeName is null) return router.IndexRoute;
+        if (routeName is null) return router.DefaultMessageRoute;
         return router.MessageRoutes.TryGetValue(routeName, out var route) ? route : router.DefaultMessageRoute;
     }
     private DefinedRoute? GetCallbackRoute(string routerName, string routeName)
     {
         var router = GetMessageRouter(routerName);
         return router.CallbackRoutes.TryGetValue(routeName, out var route) ? route : router.DefaultCallbackRoute;
+    }
+    
+    public async Task<object?> InvokeChatContextIndex(
+        TelegramChatContext context,
+        CancellationToken ct = default)
+    {
+        if (context.Chat.RouterName is null) return null;
+        var router = GetChatRouter(context.Chat.RouterName);
+        if (router.IndexRoute is null) return null;
+        
+        var result = await InvokeRoute(
+            route: router.IndexRoute,
+            routerData: context.Chat.RouterData,
+            serviceProvider: context.ServiceProvider,
+            message: null,
+            callbackQuery: null,
+            ct: ct);
+        if (result is IChatRouteResult chatRouteResult) 
+            return await ProcessChatRouteResult(chatRouteResult, context, ct);
+        return result;
     }
     
     public async Task<object?> InvokeMessageRoute(
@@ -213,8 +266,8 @@ public class TelegramBotRoutingSystem
         CancellationToken ct = default)
     {
         if (context.Message.RouterName is null) return null;
-        
         var router = GetMessageRouter(context.Message.RouterName);
+        
         var result = await InvokeRoute(
             route: router.IndexRoute,
             routerData: context.Message.RouterData,
@@ -263,7 +316,7 @@ public class TelegramBotRoutingSystem
                 return await context.SendRouterMessage(sendRouterMessage.RouterName, sendRouterMessage.RouterData, ct: ct);
             case ChatRerouteResult chatRoute:
                 context.SetChatRouter(chatRoute.RouterName, chatRoute.RouterData);
-                return await InvokeMessageRoute(context, null, ct);
+                return await InvokeChatContextIndex(context, ct);
             default: throw new NotImplementedException(result.GetType().Name);
         }
     }

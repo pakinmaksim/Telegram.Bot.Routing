@@ -22,7 +22,7 @@
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageOutputPath>$(OutputPath)</PackageOutputPath>
         
-        <PackageReleaseNotes>Initial release with basic routing and context management for Telegram bot events.</PackageReleaseNotes>
+        <PackageReleaseNotes>Fixed context inheritance. For example, creating a message context from the chat context transfers the data already received for the chat, this allows you to work with up-to-date chat data in the context of the message, as well as reduces the number of requests to the database</PackageReleaseNotes>
         
         <EnablePackageValidation>true</EnablePackageValidation>
         <!--<PackageValidationBaselineVersion>1.0.0</PackageValidationBaselineVersion>-->

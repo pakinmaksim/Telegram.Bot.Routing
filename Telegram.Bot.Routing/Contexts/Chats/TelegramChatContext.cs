@@ -7,6 +7,7 @@ namespace Telegram.Bot.Routing.Contexts.Chats;
 
 public class TelegramChatContext : TelegramContext
 {
+    private bool _isChatSaved = true;
     public IChat Chat { get; private set; } = null!;
     
     public TelegramChatContext(
@@ -20,20 +21,21 @@ public class TelegramChatContext : TelegramContext
         
     }
     
+    internal void InitializeChat(IChat chat)
+    {
+        Chat = chat;
+    }
+    
     internal async Task InitializeChat(long chatId, CancellationToken ct = default)
     {
         var exists = await Storage.GetChat(chatId, ct);
-        Chat = exists ?? throw new ArgumentException($"Chat with ID = {chatId} doesn't exist");
+        InitializeChat(exists ?? throw new ArgumentException($"Chat with ID = {chatId} doesn't exist"));
     }
     
     internal async Task InitializeChat(Chat chat, CancellationToken ct = default)
     {
-        Chat = await ReconstructChat(chat, ct);
-    }
-
-    public T? GetChatRouterData<T>()
-    {
-        return (T?) Serializer.DeserializeNullable(Chat.RouterData, typeof(T));
+        var model = await ReconstructChat(chat, ct);
+        InitializeChat(model);
     }
 
     public async Task<IMessage> SendMessage(
@@ -49,17 +51,24 @@ public class TelegramChatContext : TelegramContext
             routerData: routerData,
             ct: ct);
     }
-
+    
     public async Task<IMessage?> SendRouterMessage(
         string routerName,
         object? routerData = null,
         CancellationToken ct = default)
     {
-        return await base.SendRouterMessage(
-            chatId: Chat.TelegramId,
-            routerName: routerName,
-            routerData: routerData,
-            ct: ct);
+        await using var scope = await Routing.CreateNewMessageScope(this, routerName, routerData, ct);
+        return await base.SendRouterMessage(scope, ct);
+    }
+
+    public override Task<IMessage?> SendRouterMessage(
+        long chatId, 
+        string routerName, 
+        object? routerData = null, 
+        CancellationToken ct = default)
+    {
+        if (chatId == Chat.TelegramId) return SendRouterMessage(routerName, routerData, ct);
+        return base.SendRouterMessage(chatId, routerName, routerData, ct);
     }
 
     public async Task<IMessage> EditMessage(
@@ -84,6 +93,7 @@ public class TelegramChatContext : TelegramContext
         Chat.RouterName = routerName;
         Chat.RouterData = Serializer.SerializeNullable(routerData);
         Chat.RouteName = null;
+        _isChatSaved = false;
     }
     
     public void SetChatRouter<TChatRouter>(object? routerData = null)
@@ -96,10 +106,24 @@ public class TelegramChatContext : TelegramContext
     public void SetChatRoute(string? routeName)
     {
         Chat.RouteName = routeName;
+        _isChatSaved = false;
+    }
+    
+    public T? GetChatRouterData<T>()
+    {
+        return (T?) Serializer.DeserializeNullable(Chat.RouterData, typeof(T));
+    }
+    
+    public void SetChatRouterData(object? routerData)
+    {
+        Chat.RouterData = Serializer.SerializeNullable(routerData);
+        _isChatSaved = false;
     }
     
     public async Task SaveChat(CancellationToken ct = default)
     {
+        if (_isChatSaved) return;
         await Storage.SetChat(Chat, ct);
+        _isChatSaved = true;
     }
 }

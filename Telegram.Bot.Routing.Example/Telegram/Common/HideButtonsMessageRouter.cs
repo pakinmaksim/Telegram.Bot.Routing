@@ -7,7 +7,7 @@ namespace Telegram.Bot.Routing.Example.Telegram.Common;
 [MessageRouter("hide_buttons", isDefault: true)]
 public class HideButtonsMessageRouter : MessageRouter
 {
-    [CallbackRoute("any", isDefault: true)]
+    [CallbackRoute("default", isDefault: true)]
     public IMessageRouteResult Index()
     {
         return Keyboard(new InlineKeyboardMarkup(Array.Empty<InlineKeyboardButton[]>()));

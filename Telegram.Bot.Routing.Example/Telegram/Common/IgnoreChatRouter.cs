@@ -5,6 +5,6 @@ namespace Telegram.Bot.Routing.Example.Telegram.Common;
 [ChatRouter("ignore")]
 public class IgnoreChatRouter : ChatRouter
 {
-    [MessageRoute("any", isDefault: true)]
-    public void Index() { }
+    [MessageRoute("default", isDefault: true)]
+    public void Default() { }
 }

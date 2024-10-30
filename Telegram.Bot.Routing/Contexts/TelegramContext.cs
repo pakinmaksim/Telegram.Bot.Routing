@@ -1,4 +1,5 @@
 ﻿using Microsoft.Extensions.DependencyInjection;
+using Telegram.Bot.Routing.Contexts.Chats;
 using Telegram.Bot.Routing.Contexts.Messages;
 using Telegram.Bot.Routing.Storage;
 using Telegram.Bot.Routing.Storage.Models;
@@ -8,7 +9,7 @@ using Telegram.Bot.Types.ReplyMarkups;
 
 namespace Telegram.Bot.Routing.Contexts;
 
-public abstract class TelegramContext
+public class TelegramContext
 {
     public IServiceProvider ServiceProvider { get; private set; }
     public TelegramBotRoutingSystem Routing { get; private set; }
@@ -48,18 +49,25 @@ public abstract class TelegramContext
         return await ReconstructMessage(message, routerName, routerData, ct);
     }
     
-    public async Task<IMessage?> SendRouterMessage(
+    protected async Task<IMessage?> SendRouterMessage(
+        AsyncServiceScope scope,
+        CancellationToken ct = default)
+    {
+        var context = scope.ServiceProvider.GetRequiredService<TelegramMessageContext>();
+        var result = await Routing.InvokeMessageContextIndex(context, ct);
+        await context.SaveMessage(ct);
+        await context.SaveChat(ct);
+        return result as IMessage;
+    }
+    
+    public virtual async Task<IMessage?> SendRouterMessage(
         long chatId,
         string routerName,
         object? routerData = null,
         CancellationToken ct = default)
     {
         await using var scope = await Routing.CreateNewMessageScope(chatId, routerName, routerData, ct);
-        var context = scope.ServiceProvider.GetRequiredService<TelegramMessageContext>();
-        var result = await Routing.InvokeMessageContextIndex(context, ct);
-        await context.SaveMessage(ct);
-        await context.SaveChat(ct);
-        return result as IMessage;
+        return await SendRouterMessage(scope, ct);
     }
     
     public async Task<IMessage> EditMessage(

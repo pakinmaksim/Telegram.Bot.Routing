@@ -10,7 +10,7 @@ internal class Program
         var builder = WebApplication.CreateBuilder(args);
         
         // Add ITelegramBotClient interface
-        builder.Services.AddSingleton<ITelegramBotClient>(x => new TelegramBotClient("TOKEN"));
+        builder.Services.AddSingleton<ITelegramBotClient>(x => new TelegramBotClient(Environment.GetEnvironmentVariable("TELEGRAM_TOKEN")!));
         
         // Add routing system
         builder.Services.AddTelegramBotRouting(x =>
