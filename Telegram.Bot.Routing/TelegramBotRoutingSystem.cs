@@ -36,7 +36,7 @@ public class TelegramBotRoutingSystem
         try
         { 
             await using var scope = CreateTelegramScope(update);
-            var context = scope.ServiceProvider.GetRequiredService<TelegramContext>();
+            var context = scope.ServiceProvider.GetRequiredService<ITelegramContext>();
             
             await (update.Type switch
             {
@@ -56,7 +56,7 @@ public class TelegramBotRoutingSystem
         Update? update = null)
         where TTelegramContext : TelegramContext
     {
-        var contextController = serviceProvider.GetRequiredService<TelegramContextController>();
+        var contextController = serviceProvider.GetRequiredService<TelegramScopeManager>();
         contextController.SetCurrentContext<TTelegramContext>(update);
         return serviceProvider.GetRequiredService<TTelegramContext>();
     }
@@ -71,18 +71,18 @@ public class TelegramBotRoutingSystem
     
     public async Task<AsyncServiceScope> CreateChatScope(
         long chatId,
-        TelegramContext? telegramContext = null,
+        ITelegramContext? telegramContext = null,
         CancellationToken ct = default)
     {
         var scope = _serviceProvider.CreateAsyncScope();
         var context = SetupTelegramContext<TelegramChatContext>(scope.ServiceProvider, telegramContext?.Update);
-        await context.InitializeChat(chatId, ct); 
+        await context.InitializeChat(chatId, ct);
         return scope;
     }
 
     public async Task<AsyncServiceScope> CreateChatScope(
         Chat chat,
-        TelegramContext? telegramContext = null,
+        ITelegramContext? telegramContext = null,
         CancellationToken ct = default)
     {
         var scope = _serviceProvider.CreateAsyncScope();
@@ -94,7 +94,7 @@ public class TelegramBotRoutingSystem
     public async Task<AsyncServiceScope> CreateMessageScope(
         long chatId,
         int messageId,
-        TelegramChatContext? chatContext = null,
+        ITelegramChatContext? chatContext = null,
         CancellationToken ct = default)
     {
         var scope = _serviceProvider.CreateAsyncScope();
@@ -107,7 +107,7 @@ public class TelegramBotRoutingSystem
 
     public async Task<AsyncServiceScope> CreateMessageScope(
         Message message,
-        TelegramChatContext? chatContext = null,
+        ITelegramChatContext? chatContext = null,
         CancellationToken ct = default)
     {
         var scope = _serviceProvider.CreateAsyncScope();
@@ -144,7 +144,7 @@ public class TelegramBotRoutingSystem
         return scope;
     }
 
-    private async Task HandleMessage(TelegramContext telegramContext, CancellationToken ct)
+    private async Task HandleMessage(ITelegramContext telegramContext, CancellationToken ct)
     {
         // Extract key values of update
         var update = telegramContext.Update!;
@@ -154,7 +154,7 @@ public class TelegramBotRoutingSystem
 
         // Setup current context
         await using var chatScope = await CreateChatScope(chat, telegramContext, ct);
-        var context = chatScope.ServiceProvider.GetRequiredService<TelegramChatContext>();
+        var context = chatScope.ServiceProvider.GetRequiredService<ITelegramChatContext>();
         
         // Reconstruct received values
         await context.ReconstructMessage(message, null, null, ct);
@@ -167,7 +167,7 @@ public class TelegramBotRoutingSystem
         await context.SaveChat(ct);
     }
 
-    private async Task HandleCallbackQuery(TelegramContext telegramContext, CancellationToken ct)
+    private async Task HandleCallbackQuery(ITelegramContext telegramContext, CancellationToken ct)
     {
         // Extract key values of update
         var update = telegramContext.Update!;
@@ -221,7 +221,7 @@ public class TelegramBotRoutingSystem
     }
     
     public async Task<object?> InvokeChatContextIndex(
-        TelegramChatContext context,
+        ITelegramChatContext context,
         CancellationToken ct = default)
     {
         if (context.Chat.RouterName is null) return null;
@@ -241,7 +241,7 @@ public class TelegramBotRoutingSystem
     }
     
     public async Task<object?> InvokeMessageRoute(
-        TelegramChatContext context,
+        ITelegramChatContext context,
         Message? message,
         CancellationToken ct = default)
     {
@@ -262,7 +262,7 @@ public class TelegramBotRoutingSystem
     }
     
     public async Task<object?> InvokeMessageContextIndex(
-        TelegramMessageContext context,
+        ITelegramMessageContext context,
         CancellationToken ct = default)
     {
         if (context.Message.RouterName is null) return null;
@@ -281,7 +281,7 @@ public class TelegramBotRoutingSystem
     }
     
     public async Task<object?> InvokeCallbackRoute(
-        TelegramMessageContext context,
+        ITelegramMessageContext context,
         CallbackQuery? callbackQuery,
         CancellationToken ct = default)
     {
@@ -305,7 +305,7 @@ public class TelegramBotRoutingSystem
 
     private async Task<object?> ProcessChatRouteResult(
         IChatRouteResult result, 
-        TelegramChatContext context,
+        ITelegramChatContext context,
         CancellationToken ct = default)
     {
         switch (result)
@@ -323,7 +323,7 @@ public class TelegramBotRoutingSystem
 
     private async Task<object?> ProcessMessageRouteResult(
         IMessageRouteResult result, 
-        TelegramMessageContext context,
+        ITelegramMessageContext context,
         CancellationToken ct = default)
     {
         switch (result)

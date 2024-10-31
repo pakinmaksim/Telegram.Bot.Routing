@@ -3,6 +3,9 @@ using Telegram.Bot.Routing.Contexts.Messages;
 
 namespace Telegram.Bot.Routing.Contexts.Chats;
 
+/// <summary>
+/// Base class for all chat routers
+/// </summary>
 public abstract class ChatRouter
 {
     protected static SendMessageResult Message(MessageStructure message) => 
@@ -12,7 +15,7 @@ public abstract class ChatRouter
     protected static ChatRerouteResult Reroute(string routerName, object? routerData = null) => 
         new() { RouterName = routerName, RouterData = routerData };
     
-    protected TelegramChatContext Context { get; private set; } = null!;
+    protected ITelegramChatContext Context { get; private set; } = null!;
     
     
     protected SendRouterMessageResult RouterMessage<TMessageRouter>(object? routerData = null)

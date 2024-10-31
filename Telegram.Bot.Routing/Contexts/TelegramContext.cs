@@ -9,7 +9,7 @@ using Telegram.Bot.Types.ReplyMarkups;
 
 namespace Telegram.Bot.Routing.Contexts;
 
-public class TelegramContext
+public class TelegramContext : ITelegramContext
 {
     public IServiceProvider ServiceProvider { get; private set; }
     public TelegramBotRoutingSystem Routing { get; private set; }
@@ -59,7 +59,7 @@ public class TelegramContext
         await context.SaveChat(ct);
         return result as IMessage;
     }
-    
+
     public virtual async Task<IMessage?> SendRouterMessage(
         long chatId,
         string routerName,
@@ -69,7 +69,7 @@ public class TelegramContext
         await using var scope = await Routing.CreateNewMessageScope(chatId, routerName, routerData, ct);
         return await SendRouterMessage(scope, ct);
     }
-    
+
     public async Task<IMessage> EditMessage(
         long chatId,
         int messageId,
@@ -87,7 +87,7 @@ public class TelegramContext
             cancellationToken: ct);
         return await ReconstructMessage(message, routerName, routerData, ct);
     }
-    
+
     public async Task<IMessage> SetKeyboard(
         long chatId,
         int messageId,
@@ -103,8 +103,33 @@ public class TelegramContext
             cancellationToken: ct);
         return await ReconstructMessage(message, routerName, routerData, ct);
     }
+
+    public async Task<IMessage> RemoveKeyboard(
+        long chatId, 
+        int messageId, 
+        string? routerName = null, 
+        object? routerData = null,
+        CancellationToken ct = default)
+    {
+        return await SetKeyboard(
+            chatId: chatId,
+            messageId: messageId,
+            keyboard: new InlineKeyboardMarkup(Array.Empty<InlineKeyboardButton[]>()),
+            routerName: routerName,
+            routerData: routerData,
+            ct: ct);
+    }
+
+    public async Task<IUser> ReconstructUser(
+        User origin,
+        CancellationToken ct = default)
+    {
+        var constructed = await Storage.ConstructUser(origin, ct);
+        await Storage.SetUser(constructed, ct);
+        return constructed;
+    }
     
-    internal async Task<IChat> ReconstructChat(Chat origin, CancellationToken ct = default)
+    public async Task<IChat> ReconstructChat(Chat origin, CancellationToken ct = default)
     {
         var exists = await Storage.GetChat(origin.Id, ct);
         
@@ -126,17 +151,8 @@ public class TelegramContext
         
         return await ReconstructChat(origin, routerName, routerData, routeName, ct);
     }
-    
-    internal async Task<IUser> ReconstructUser(
-        User origin,
-        CancellationToken ct = default)
-    {
-        var constructed = await Storage.ConstructUser(origin, ct);
-        await Storage.SetUser(constructed, ct);
-        return constructed;
-    }
-    
-    internal async Task<IChat> ReconstructChat(
+
+    public async Task<IChat> ReconstructChat(
         Chat origin,
         string? routerName,
         string? routerData,
@@ -151,7 +167,7 @@ public class TelegramContext
         return constructed;
     }
     
-    internal async Task<IMessage> ReconstructMessage(Message origin, CancellationToken ct = default)
+    public async Task<IMessage> ReconstructMessage(Message origin, CancellationToken ct = default)
     {
         var exists = await Storage.GetMessage(origin.Chat.Id, origin.MessageId, ct);
         
@@ -171,7 +187,7 @@ public class TelegramContext
         return await ReconstructMessage(origin, routerName, routerData, ct);
     }
     
-    internal async Task<IMessage> ReconstructMessage(
+    public async Task<IMessage> ReconstructMessage(
         Message origin,
         string? routerName,
         object? routerData,

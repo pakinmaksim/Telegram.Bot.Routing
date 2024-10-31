@@ -48,10 +48,14 @@ public static class ServiceRegistrar
         services.AddScoped(typeof(ITelegramStorage), options.StorageType);
         services.AddScoped(typeof(IRouteDataSerializer), options.RouteDataSerializerType);
         
-        services.AddScoped<TelegramContextController>();
-        services.AddScoped(ResolveTelegramContext<TelegramContext>);
-        services.AddScoped(ResolveTelegramContext<TelegramChatContext>);
-        services.AddScoped(ResolveTelegramContext<TelegramMessageContext>);
+        services.AddScoped<TelegramScopeManager>();
+        
+        services.AddScoped<TelegramContext>();
+        services.Add(TelegramContextInterfaceDescriptor<ITelegramContext, TelegramContext>());
+        services.AddScoped<TelegramChatContext>();
+        services.Add(TelegramContextInterfaceDescriptor<ITelegramChatContext, TelegramChatContext>());
+        services.AddScoped<TelegramMessageContext>();
+        services.Add(TelegramContextInterfaceDescriptor<ITelegramMessageContext, TelegramMessageContext>());
         
         services.AddSingleton<TelegramBotRoutingSystem>();
 
@@ -249,10 +253,22 @@ public static class ServiceRegistrar
         }
     }
     
-    private static T ResolveTelegramContext<T>(IServiceProvider serviceProvider) where T : class
+    private static ServiceDescriptor TelegramContextInterfaceDescriptor<TInterface, TService>()
+        where TInterface : ITelegramContext
+        where TService : TelegramContext
     {
-        var contextController = serviceProvider.GetRequiredService<TelegramContextController>();
-        return (contextController.GetCurrentContext() as T)!;
+        return new ServiceDescriptor(
+            serviceType: typeof(TInterface), 
+            factory: x =>
+            {
+                var contextController = x.GetRequiredService<TelegramScopeManager>();
+                if (x.GetRequiredService(contextController.ContextType) is not TService context) 
+                    throw new InvalidOperationException($"Cannot resolve service for type {typeof(TInterface).Name} " +
+                                                        $"because current context for Telegram scope is {contextController.ContextType.Name}");
+                context.Update = contextController.Update;
+                return context;
+            }, 
+            lifetime: ServiceLifetime.Scoped);
     }
 
     private static Func<IServiceProvider, object> ResolveChatRouterMethod(Type chatRouterType)
@@ -260,7 +276,7 @@ public static class ServiceRegistrar
         return (serviceProvider) =>
         {
             var router = (ChatRouter) ActivatorUtilities.CreateInstance(serviceProvider, chatRouterType);
-            var chatContext = serviceProvider.GetRequiredService<TelegramChatContext>();
+            var chatContext = serviceProvider.GetRequiredService<ITelegramChatContext>();
             var property = typeof(ChatRouter).GetProperty("Context", BindingFlags.Instance | BindingFlags.NonPublic);
             property!.SetValue(router, chatContext);
             return router;
@@ -272,7 +288,7 @@ public static class ServiceRegistrar
         return (serviceProvider) =>
         {
             var router = (MessageRouter) ActivatorUtilities.CreateInstance(serviceProvider, messageRouterType);
-            var messageContext = serviceProvider.GetRequiredService<TelegramMessageContext>();
+            var messageContext = serviceProvider.GetRequiredService<ITelegramMessageContext>();
             var property = typeof(MessageRouter).GetProperty("Context", BindingFlags.Instance | BindingFlags.NonPublic);
             property!.SetValue(router, messageContext);
             return router;

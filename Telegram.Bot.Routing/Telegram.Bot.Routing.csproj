@@ -22,7 +22,7 @@
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageOutputPath>$(OutputPath)</PackageOutputPath>
         
-        <PackageReleaseNotes>Hotfix</PackageReleaseNotes>
+        <PackageReleaseNotes>Fixed context creation via interfaces and added RemoveKeyboard method in context</PackageReleaseNotes>
         
         <EnablePackageValidation>true</EnablePackageValidation>
         <!--<PackageValidationBaselineVersion>1.0.0</PackageValidationBaselineVersion>-->

@@ -12,7 +12,6 @@ public class GreetingsMessageRouter : MessageRouter
     [CallbackRoute("index")]
     public IMessageRouteResult Index()
     {
-        Context.ButtonPressRequired();
         return Message(new MessageStructure
         {
             Text = "Что делать?",
@@ -39,7 +38,7 @@ public class GreetingsMessageRouter : MessageRouter
     [CallbackRoute("auth")]
     public IMessageRouteResult Authorization()
     {
-        return Reroute<AuthorizationMessageRouter>();
+        return RerouteChat<AuthorizationChatRouter>();
     }
     
     [CallbackRoute("about")]
@@ -47,7 +46,7 @@ public class GreetingsMessageRouter : MessageRouter
     {
         return Message(new MessageStructure()
         {
-            Text = "Звони сюда \\+79969597212",
+            Text = "Контакты тут",
             ReplyMarkup = new InlineKeyboardMarkup([
                 [Action("Назад", "index")],
             ])

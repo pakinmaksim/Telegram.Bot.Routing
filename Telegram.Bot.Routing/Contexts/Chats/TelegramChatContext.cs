@@ -2,10 +2,11 @@
 using Telegram.Bot.Routing.Storage.Models;
 using Telegram.Bot.Routing.Storage.Serializers;
 using Telegram.Bot.Types;
+using Telegram.Bot.Types.ReplyMarkups;
 
 namespace Telegram.Bot.Routing.Contexts.Chats;
 
-public class TelegramChatContext : TelegramContext
+public class TelegramChatContext : TelegramContext, ITelegramChatContext
 {
     private bool _isChatSaved = true;
     public IChat Chat { get; private set; } = null!;
@@ -87,7 +88,37 @@ public class TelegramChatContext : TelegramContext
             ct: ct
         );
     }
-    
+
+    public async Task<IMessage> SetKeyboard(
+        int messageId,
+        InlineKeyboardMarkup keyboard,
+        string? routerName = null,
+        object? routerData = null,
+        CancellationToken ct = default)
+    {
+        return await base.SetKeyboard(
+            chatId: Chat.TelegramId,
+            messageId: messageId,
+            keyboard: keyboard,
+            routerName: routerName,
+            routerData: routerData,
+            ct: ct);
+    }
+
+    public async Task<IMessage> RemoveKeyboard(
+        int messageId, 
+        string? routerName = null, 
+        object? routerData = null,
+        CancellationToken ct = default)
+    {
+        return await base.RemoveKeyboard(
+            chatId: Chat.TelegramId,
+            messageId: messageId,
+            routerName: routerName,
+            routerData: routerData,
+            ct: ct);
+    }
+
     public void SetChatRouter(string? routerName, object? routerData = null)
     {
         Chat.RouterName = routerName;

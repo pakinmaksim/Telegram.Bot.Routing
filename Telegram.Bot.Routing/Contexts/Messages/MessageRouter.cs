@@ -4,6 +4,9 @@ using Telegram.Bot.Types.ReplyMarkups;
 
 namespace Telegram.Bot.Routing.Contexts.Messages;
 
+/// <summary>
+/// Base class for all message routers
+/// </summary>
 public abstract class MessageRouter
 {
     protected static ShowMessageResult Message(MessageStructure message) => 
@@ -21,7 +24,7 @@ public abstract class MessageRouter
     protected static InlineKeyboardButton Action(string text, string route) => 
         Action(text, CallbackData.Create(route));
 
-    protected TelegramMessageContext Context { get; private set; } = null!;
+    protected ITelegramMessageContext Context { get; private set; } = null!;
     
     protected MessageRerouteResult Reroute<TMessageRouter>(object? routerData = null)
         where TMessageRouter : MessageRouter

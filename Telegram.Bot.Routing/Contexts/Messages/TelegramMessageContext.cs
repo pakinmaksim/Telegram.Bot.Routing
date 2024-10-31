@@ -7,7 +7,7 @@ using Telegram.Bot.Types.ReplyMarkups;
 
 namespace Telegram.Bot.Routing.Contexts.Messages;
 
-public class TelegramMessageContext : TelegramChatContext
+public class TelegramMessageContext : TelegramChatContext, ITelegramMessageContext
 {
     private bool _isMessageSaved = true;
     public IMessage Message { get; private set; } = null!;
@@ -94,7 +94,19 @@ public class TelegramMessageContext : TelegramChatContext
         _isMessageSaved = false;
         return Message;
     }
-    
+
+    public async Task<IMessage> RemoveKeyboard(CancellationToken ct = default)
+    {
+        if (!Message.IsCreated)
+            throw new InvalidOperationException("Can't remove keyboard on message, that not created yet");
+
+        return await base.RemoveKeyboard(
+            messageId: Message.TelegramId,
+            routerName: Message.RouterName,
+            routerData: Message.RouterData,
+            ct: ct);
+    }
+
     public void SetMessageRouter(string? routerName, object? routerData)
     {
         Message.RouterName = routerName;
