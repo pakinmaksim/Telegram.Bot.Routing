@@ -1,4 +1,5 @@
-﻿using Telegram.Bot.Routing.Contexts.Messages.RouteResults;
+﻿using Telegram.Bot.Routing.Contexts.Chats;
+using Telegram.Bot.Routing.Contexts.Messages.RouteResults;
 using Telegram.Bot.Types.ReplyMarkups;
 
 namespace Telegram.Bot.Routing.Contexts.Messages;
@@ -29,7 +30,7 @@ public abstract class MessageRouter
         return Reroute(routerName, routerData);
     }
     protected ChatRerouteResult RerouteChat<TChatRouter>(object? routerData = null)
-        where TChatRouter : MessageRouter
+        where TChatRouter : ChatRouter
     {
         var routerName = Context.Routing.GetChatRouterName(typeof(TChatRouter));
         return RerouteChat(routerName, routerData);
