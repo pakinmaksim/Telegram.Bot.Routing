@@ -11,6 +11,8 @@ public abstract class MessageRouter
         new() { Keyboard = keyboard };
     protected static MessageRerouteResult Reroute(string? routerName, object? routerData = null) => 
         new() { RouterName = routerName, RouterData = routerData };
+    protected static ChatRerouteResult RerouteChat(string? routerName, object? routerData = null) => 
+        new() { RouterName = routerName, RouterData = routerData };
 
     protected static InlineKeyboardButton Action(string text, CallbackData callbackData) => 
         InlineKeyboardButton.WithCallbackData(text, callbackData.ToString());
@@ -25,5 +27,11 @@ public abstract class MessageRouter
     {
         var routerName = Context.Routing.GetMessageRouterName(typeof(TMessageRouter));
         return Reroute(routerName, routerData);
+    }
+    protected ChatRerouteResult RerouteChat<TChatRouter>(object? routerData = null)
+        where TChatRouter : MessageRouter
+    {
+        var routerName = Context.Routing.GetChatRouterName(typeof(TChatRouter));
+        return RerouteChat(routerName, routerData);
     }
 }

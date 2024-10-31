@@ -314,7 +314,7 @@ public class TelegramBotRoutingSystem
                 return await context.SendMessage(sendMessage.Message, ct: ct);
             case SendRouterMessageResult sendRouterMessage:
                 return await context.SendRouterMessage(sendRouterMessage.RouterName, sendRouterMessage.RouterData, ct: ct);
-            case ChatRerouteResult chatRoute:
+            case Contexts.Chats.RouteResults.ChatRerouteResult chatRoute:
                 context.SetChatRouter(chatRoute.RouterName, chatRoute.RouterData);
                 return await InvokeChatContextIndex(context, ct);
             default: throw new NotImplementedException(result.GetType().Name);
@@ -335,6 +335,9 @@ public class TelegramBotRoutingSystem
             case MessageRerouteResult changeMessageRouter:
                 context.SetMessageRouter(changeMessageRouter.RouterName, changeMessageRouter.RouterData);
                 return await InvokeMessageContextIndex(context, ct);
+            case Contexts.Messages.RouteResults.ChatRerouteResult chatRoute:
+                context.SetChatRouter(chatRoute.RouterName, chatRoute.RouterData);
+                return await InvokeChatContextIndex(context, ct);
             default: throw new NotImplementedException(result.GetType().Name);
         }
     }
