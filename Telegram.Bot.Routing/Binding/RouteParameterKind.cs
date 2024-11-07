@@ -7,5 +7,6 @@ internal enum RouteParameterKind
     RouterData,
     UserMessage,
     CallbackQuery,
+    CallbackData,
     CancellationToken
 }

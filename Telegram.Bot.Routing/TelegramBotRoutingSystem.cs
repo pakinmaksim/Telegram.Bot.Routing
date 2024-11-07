@@ -385,6 +385,7 @@ public class TelegramBotRoutingSystem
             RouteParameterKind.RouterData => ActivateRouterData(routerData, parameter, serviceProvider),
             RouteParameterKind.UserMessage => message ?? parameter.DefaultValue,
             RouteParameterKind.CallbackQuery => callbackQuery ?? parameter.DefaultValue,
+            RouteParameterKind.CallbackData => (callbackQuery != null ? CallbackData.Parse(callbackQuery.Data) : null) ?? parameter.DefaultValue,
             RouteParameterKind.CancellationToken => ct ?? parameter.DefaultValue,
             _ => parameter.DefaultValue
         });

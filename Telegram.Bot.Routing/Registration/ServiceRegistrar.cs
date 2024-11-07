@@ -237,6 +237,16 @@ public static class ServiceRegistrar
                 continue;
             }
 
+            if (parameter.ParameterType == typeof(CallbackData))
+            {
+                yield return new DefinedRouteParameter()
+                {
+                    Kind = RouteParameterKind.CallbackData,
+                    DefaultValue = parameter.HasDefaultValue ? Type.Missing : null
+                };
+                continue;
+            }
+
             if (parameter.ParameterType == typeof(CancellationToken))
             {
                 yield return new DefinedRouteParameter()
