@@ -178,9 +178,9 @@ public class TelegramBotRoutingSystem
         
         // Setup current context
         await using var chatScope = await CreateChatScope(chat, telegramContext, ct);
-        var chatContext = chatScope.ServiceProvider.GetRequiredService<TelegramChatContext>();
+        var chatContext = chatScope.ServiceProvider.GetRequiredService<ITelegramChatContext>();
         await using var scope = await CreateMessageScope(message, chatContext, ct);
-        var context = scope.ServiceProvider.GetRequiredService<TelegramMessageContext>();
+        var context = scope.ServiceProvider.GetRequiredService<ITelegramMessageContext>();
         
         // Reconstruct received values
         await context.ReconstructUser(user, ct);
