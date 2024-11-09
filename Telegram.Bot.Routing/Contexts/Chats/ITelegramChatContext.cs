@@ -1,4 +1,5 @@
-﻿using Telegram.Bot.Routing.Storage.Models;
+﻿using Telegram.Bot.Routing.Contexts.Messages;
+using Telegram.Bot.Routing.Storage.Models;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
 
@@ -36,6 +37,17 @@ public interface ITelegramChatContext : ITelegramContext
         string routerName,
         object? routerData = null,
         CancellationToken ct = default);
+
+    /// <summary>
+    /// Construct message from router and send it to the current chat
+    /// </summary>
+    /// <param name="routerData">Router data to construct message</param>
+    /// <param name="ct">Propagates notification that operations should be canceled</param>
+    /// <returns>Stored message model if message was sent</returns>
+    public Task<IMessage?> SendRouterMessage<TMessageRouter>(
+        object? routerData = null,
+        CancellationToken ct = default)
+        where TMessageRouter : MessageRouter;
 
     /// <summary>
     /// Changing the message structure in current chat. The changed origin message is saved to the storage
@@ -84,23 +96,58 @@ public interface ITelegramChatContext : ITelegramContext
         CancellationToken ct = default);
     
     /// <summary>
-    /// Set current chat router without calling Index method in ChatRouter
+    /// Construct current chat router from dependency injection
+    /// </summary>
+    /// <returns>Current ChatRouter</returns>
+    public ChatRouter? GetChatRouter();
+
+    /// <summary>
+    /// Check current chat router by name
+    /// </summary>
+    /// <param name="routerName">Router name to set</param>
+    public bool IsChatRouter(
+        string? routerName);
+
+    /// <summary>
+    /// Check current chat router by type
+    /// </summary>
+    public bool IsChatRouter<TChatRouter>()
+        where TChatRouter : ChatRouter;
+    
+    /// <summary>
+    /// Set current chat router and invoke Index method in ChatRouter
     /// </summary>
     /// <param name="routerName">Router name to set</param>
     /// <param name="routerData">Router data to set</param>
-    public void SetChatRouter(string? routerName, object? routerData = null);
+    /// <param name="ct">Propagates notification that operations should be canceled</param>
+    public Task<ChatRouter?> ChangeChatRouter(
+        string? routerName, 
+        object? routerData = null, 
+        CancellationToken ct = default);
 
     /// <summary>
-    /// Set current chat router without calling Index method in ChatRouter
+    /// Set current chat router and invoke Index method in ChatRouter
     /// </summary>
     /// <param name="routerData">Router data to set</param>
-    public void SetChatRouter<TChatRouter>(object? routerData = null) where TChatRouter : ChatRouter;
-
+    /// <param name="ct">Propagates notification that operations should be canceled</param>
+    public Task<TChatRouter> ChangeChatRouter<TChatRouter>(
+        object? routerData = null, 
+        CancellationToken ct = default) 
+        where TChatRouter : ChatRouter;
+    
+    /// <summary>
+    /// Removes router for current chat
+    /// </summary>
+    /// <param name="ct">Propagates notification that operations should be canceled</param>
+    public Task RemoveChatRouter(
+        CancellationToken ct = default);
+    
     /// <summary>
     /// Set current chat route to handle next user messages
     /// </summary>
     /// <param name="routeName">Route to set</param>
-    public void SetChatRoute(string? routeName);
+    public void SetChatRoute(
+        string? routeName);
 
     /// <summary>
     /// Deserialize current chat router data
@@ -112,11 +159,19 @@ public interface ITelegramChatContext : ITelegramContext
     /// Serialize current chat router data
     /// </summary>
     /// <param name="routerData">Router data to set</param>
-    public void SetChatRouterData(object? routerData);
+    public void SetChatRouterData(
+        object? routerData);
+
+    /// <summary>
+    /// Deserialize current and serialize updated chat router data
+    /// </summary>
+    /// <returns>Deserialized data</returns>
+    public T? UpdateChatRouterData<T>(Action<T> action);
 
     /// <summary>
     /// Saves current Chat to storage
     /// </summary>
     /// <param name="ct">Propagates notification that operations should be canceled</param>
-    public Task SaveChat(CancellationToken ct = default);
+    public Task SaveChat(
+        CancellationToken ct = default);
 }

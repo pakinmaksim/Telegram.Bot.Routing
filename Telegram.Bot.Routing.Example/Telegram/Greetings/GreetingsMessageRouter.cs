@@ -1,7 +1,5 @@
 ﻿using Telegram.Bot.Routing.Contexts.Messages;
-using Telegram.Bot.Routing.Contexts.Messages.RouteResults;
-using Telegram.Bot.Routing.Example.Telegram.Authorization;
-using Telegram.Bot.Routing.Example.Telegram.Common;
+using Telegram.Bot.Routing.Example.Telegram.Weather;
 using Telegram.Bot.Types.ReplyMarkups;
 
 namespace Telegram.Bot.Routing.Example.Telegram.Greetings;
@@ -9,44 +7,34 @@ namespace Telegram.Bot.Routing.Example.Telegram.Greetings;
 [MessageRouter("greetings")]
 public class GreetingsMessageRouter : MessageRouter
 {
-    [CallbackRoute("index")]
-    public IMessageRouteResult Index()
+    [CallbackRoute("index", isDefault: true)]
+    public async Task Index()
     {
-        return Message(new MessageStructure
+        if (!Context.IsChatRouter<GreetingsChatRouter>()) 
+            await Context.ChangeChatRouter<GreetingsChatRouter>();
+        
+        await Context.ShowMessage(new MessageStructure
         {
-            Text = "Что делать?",
+            Text = "Добро пожаловать в бот погоды",
             ReplyMarkup = new InlineKeyboardMarkup([
-                [Action("Регистрация", "reg")],
-                [Action("Авторизация", "auth")],
+                [Action("Узнать погоду", "location")],
                 [Action("О нас", "about")]
             ])
         });
     }
     
-    [CallbackRoute("reg")]
-    public IMessageRouteResult Registration()
+    [CallbackRoute("location")]
+    public async Task Location()
     {
-        return Message(new MessageStructure()
-        {
-            Text = "Регистрации ещё нет",
-            ReplyMarkup = new InlineKeyboardMarkup([
-                [Action("Назад", "index")],
-            ])
-        });
-    }
-    
-    [CallbackRoute("auth")]
-    public IMessageRouteResult Authorization()
-    {
-        return RerouteChat<AuthorizationChatRouter>();
+        await Context.ChangeMessageRouter<WeatherMessageRouter>();
     }
     
     [CallbackRoute("about")]
-    public IMessageRouteResult About()
+    public async Task About()
     {
-        return Message(new MessageStructure()
+        await Context.ShowMessage(new MessageStructure()
         {
-            Text = "Контакты тут",
+            Text = "Просто образец бота, используйте исходный код для примера",
             ReplyMarkup = new InlineKeyboardMarkup([
                 [Action("Назад", "index")],
             ])

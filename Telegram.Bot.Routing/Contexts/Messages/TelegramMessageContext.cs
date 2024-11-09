@@ -1,4 +1,5 @@
-﻿using Telegram.Bot.Routing.Contexts.Chats;
+﻿using Microsoft.Extensions.DependencyInjection;
+using Telegram.Bot.Routing.Contexts.Chats;
 using Telegram.Bot.Routing.Storage;
 using Telegram.Bot.Routing.Storage.Models;
 using Telegram.Bot.Routing.Storage.Serializers;
@@ -95,7 +96,8 @@ public class TelegramMessageContext : TelegramChatContext, ITelegramMessageConte
         return Message;
     }
 
-    public async Task<IMessage> RemoveKeyboard(CancellationToken ct = default)
+    public async Task<IMessage> RemoveKeyboard(
+        CancellationToken ct = default)
     {
         if (!Message.IsCreated)
             throw new InvalidOperationException("Can't remove keyboard on message, that not created yet");
@@ -105,6 +107,43 @@ public class TelegramMessageContext : TelegramChatContext, ITelegramMessageConte
             routerName: Message.RouterName,
             routerData: Message.RouterData,
             ct: ct);
+    }
+
+    public MessageRouter? GetMessageRouter()
+    {
+        var routerType = Routing.GetMessageRouterType(Message.RouterName);
+        if (routerType is null) return null;
+        return (MessageRouter) ServiceProvider.GetRequiredService(routerType);
+    }
+
+    public async Task<MessageRouter?> ChangeMessageRouter(
+        string? routerName, 
+        object? routerData = null, 
+        CancellationToken ct = default)
+    {
+        Message.RouterName = routerName;
+        Message.RouterData = Serializer.SerializeNullable(routerData);
+        _isMessageSaved = false;
+        
+        var router = GetMessageRouter();
+        if (router is null) return null;
+        await router.InvokeIndex(ct);
+        return router;
+    }
+    
+    public async Task<TMessageRouter> ChangeMessageRouter<TMessageRouter>(
+        object? routerData = null, 
+        CancellationToken ct = default)
+        where TMessageRouter : MessageRouter
+    {
+        var routerName = Routing.GetMessageRouterName(typeof(TMessageRouter));
+        var router = await ChangeMessageRouter(routerName, routerData, ct);
+        return (TMessageRouter) router!;
+    }
+
+    public async Task RemoveMessageRouter(CancellationToken ct = default)
+    {
+        await ChangeMessageRouter(null, ct: ct);
     }
 
     public void SetMessageRouter(string? routerName, object? routerData)
@@ -130,6 +169,15 @@ public class TelegramMessageContext : TelegramChatContext, ITelegramMessageConte
     {
         Message.RouterData = Serializer.SerializeNullable(routerData);
         _isMessageSaved = false;
+    }
+
+    public T? UpdateMessageRouterData<T>(Action<T> action)
+    {
+        var data = GetMessageRouterData<T>();
+        if (data is null) return default;
+        action.Invoke(data);
+        SetMessageRouterData(data);
+        return data;
     }
 
     public async Task SaveMessage(CancellationToken ct = default)

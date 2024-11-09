@@ -18,7 +18,7 @@ public class TelegramBotRoutingOptions
     internal readonly Dictionary<string, DefinedChatRouter> ChatRouters = new();
     internal string? DefaultMessageRouterName = null;
     internal readonly Dictionary<string, DefinedMessageRouter> MessageRouters = new();
-    public ParseMode? DefaultParseMode { get; set; } = ParseMode.MarkdownV2;
+    public ParseMode DefaultParseMode { get; set; } = ParseMode.MarkdownV2;
 
     public TelegramBotRoutingOptions UseClient<T>() where T : ITelegramBotClient
     {

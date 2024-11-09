@@ -287,7 +287,7 @@ public static class ServiceRegistrar
         {
             var router = (ChatRouter) ActivatorUtilities.CreateInstance(serviceProvider, chatRouterType);
             var chatContext = serviceProvider.GetRequiredService<ITelegramChatContext>();
-            var property = typeof(ChatRouter).GetProperty("Context", BindingFlags.Instance | BindingFlags.NonPublic);
+            var property = typeof(ChatRouter).GetProperty("Context", BindingFlags.Instance | BindingFlags.Public);
             property!.SetValue(router, chatContext);
             return router;
         };
@@ -299,7 +299,7 @@ public static class ServiceRegistrar
         {
             var router = (MessageRouter) ActivatorUtilities.CreateInstance(serviceProvider, messageRouterType);
             var messageContext = serviceProvider.GetRequiredService<ITelegramMessageContext>();
-            var property = typeof(MessageRouter).GetProperty("Context", BindingFlags.Instance | BindingFlags.NonPublic);
+            var property = typeof(MessageRouter).GetProperty("Context", BindingFlags.Instance | BindingFlags.Public);
             property!.SetValue(router, messageContext);
             return router;
         };

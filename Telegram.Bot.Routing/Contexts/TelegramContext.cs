@@ -54,10 +54,14 @@ public class TelegramContext : ITelegramContext
         CancellationToken ct = default)
     {
         var context = scope.ServiceProvider.GetRequiredService<TelegramMessageContext>();
-        var result = await Routing.InvokeMessageContextIndex(context, ct);
+        var router = context.GetMessageRouter();
+        if (router is null) return null;
+        
+        await router.InvokeIndex(ct);
+        
         await context.SaveMessage(ct);
         await context.SaveChat(ct);
-        return result as IMessage;
+        return context.Message;
     }
 
     public virtual async Task<IMessage?> SendRouterMessage(

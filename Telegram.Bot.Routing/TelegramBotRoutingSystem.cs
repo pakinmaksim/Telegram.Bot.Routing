@@ -1,11 +1,10 @@
-﻿using Microsoft.Extensions.DependencyInjection;
+﻿using System.Reflection;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Telegram.Bot.Routing.Binding;
 using Telegram.Bot.Routing.Contexts;
 using Telegram.Bot.Routing.Contexts.Chats;
-using Telegram.Bot.Routing.Contexts.Chats.RouteResults;
 using Telegram.Bot.Routing.Contexts.Messages;
-using Telegram.Bot.Routing.Contexts.Messages.RouteResults;
 using Telegram.Bot.Routing.Registration;
 using Telegram.Bot.Routing.Storage.Serializers;
 using Telegram.Bot.Types;
@@ -161,7 +160,9 @@ public class TelegramBotRoutingSystem
         if (user != null) await context.ReconstructUser(user, ct);
         
         // Call route
-        await InvokeMessageRoute(context, message, ct);
+        var router = context.GetChatRouter();
+        if (router is null) return;
+        await router.InvokeMessageRoute(message, ct);
         
         // Save state
         await context.SaveChat(ct);
@@ -186,7 +187,9 @@ public class TelegramBotRoutingSystem
         await context.ReconstructUser(user, ct);
         
         // Call route
-        await InvokeCallbackRoute(context, callbackQuery, ct);
+        var router = context.GetMessageRouter();
+        if (router is null) return;
+        await router.InvokeCallbackRoute(callbackQuery, ct);
         
         // Save state
         await context.SaveMessage(ct);
@@ -207,142 +210,95 @@ public class TelegramBotRoutingSystem
         GetChatRouter(type).Name ?? throw new ArgumentException($"Cannot find chat router with type '{type.Name}'");
     public string GetMessageRouterName(Type type) => 
         GetMessageRouter(type).Name ?? throw new ArgumentException($"Cannot find message router with type '{type.Name}'");
-
-    private DefinedRoute? GetMessageRoute(string routerName, string? routeName)
-    {
-        var router = GetChatRouter(routerName);
-        if (routeName is null) return router.DefaultMessageRoute;
-        return router.MessageRoutes.TryGetValue(routeName, out var route) ? route : router.DefaultMessageRoute;
-    }
-    private DefinedRoute? GetCallbackRoute(string routerName, string routeName)
-    {
-        var router = GetMessageRouter(routerName);
-        return router.CallbackRoutes.TryGetValue(routeName, out var route) ? route : router.DefaultCallbackRoute;
-    }
     
-    public async Task<object?> InvokeChatContextIndex(
-        ITelegramChatContext context,
+    public string GetChatRouterName<TChatRouter>() where TChatRouter : ChatRouter => 
+        GetChatRouterName(typeof(TChatRouter));
+    public string GetMessageRouterName<TMessageRouter>() where TMessageRouter : MessageRouter => 
+        GetMessageRouterName(typeof(TMessageRouter));
+
+    public Type? GetChatRouterType(string? routerName) => 
+        routerName is null ? null : GetChatRouter(routerName).Type;
+    public Type? GetMessageRouterType(string? routerName) => 
+        routerName is null ? null : GetMessageRouter(routerName).Type;
+    
+    public async Task<object?> InvokeChatRouterIndex(
+        ChatRouter router,
         CancellationToken ct = default)
     {
-        if (context.Chat.RouterName is null) return null;
-        var router = GetChatRouter(context.Chat.RouterName);
-        if (router.IndexRoute is null) return null;
+        var definedRouter = GetChatRouter(router.GetType());
+        if (definedRouter.IndexRoute is null) return null;
         
         var result = await InvokeRoute(
-            route: router.IndexRoute,
-            routerData: context.Chat.RouterData,
-            serviceProvider: context.ServiceProvider,
+            router: router,
+            route: definedRouter.IndexRoute,
+            routerData: router.Context.Chat.RouterData,
+            serviceProvider: router.Context.ServiceProvider,
             message: null,
             callbackQuery: null,
             ct: ct);
-        if (result is IChatRouteResult chatRouteResult) 
-            return await ProcessChatRouteResult(chatRouteResult, context, ct);
         return result;
     }
     
     public async Task<object?> InvokeMessageRoute(
-        ITelegramChatContext context,
+        ChatRouter router,
         Message? message,
         CancellationToken ct = default)
     {
-        if (context.Chat.RouterName is null) return null;
-        var route = GetMessageRoute(context.Chat.RouterName, context.Chat.RouteName);
+        var definedRouter = GetChatRouter(router.GetType());
+        var route = definedRouter.GetMessageRoute(router.Context.Chat.RouteName);
         if (route is null) return null;
         
         var result = await InvokeRoute(
+            router: router,
             route: route,
-            routerData: context.Chat.RouterData,
-            serviceProvider: context.ServiceProvider,
+            routerData: router.Context.Chat.RouterData,
+            serviceProvider: router.Context.ServiceProvider,
             message: message,
             callbackQuery: null,
             ct: ct);
-        if (result is IChatRouteResult chatRouteResult) 
-            return await ProcessChatRouteResult(chatRouteResult, context, ct);
         return result;
     }
     
-    public async Task<object?> InvokeMessageContextIndex(
-        ITelegramMessageContext context,
+    public async Task<object?> InvokeMessageRouterIndex(
+        MessageRouter router,
         CancellationToken ct = default)
     {
-        if (context.Message.RouterName is null) return null;
-        var router = GetMessageRouter(context.Message.RouterName);
+        var definedRouter = GetMessageRouter(router.GetType());
         
         var result = await InvokeRoute(
-            route: router.IndexRoute,
-            routerData: context.Message.RouterData,
-            serviceProvider: context.ServiceProvider,
+            router: router,
+            route: definedRouter.IndexRoute,
+            routerData: router.Context.Message.RouterData,
+            serviceProvider: router.Context.ServiceProvider,
             message: null,
             callbackQuery: null,
             ct: ct);
-        if (result is IMessageRouteResult messageRouteResult) 
-            return await ProcessMessageRouteResult(messageRouteResult, context, ct);
         return result;
     }
     
     public async Task<object?> InvokeCallbackRoute(
-        ITelegramMessageContext context,
+        MessageRouter router,
         CallbackQuery? callbackQuery,
         CancellationToken ct = default)
     {
-        if (context.Message.RouterName is null) return null;
+        var definedRouter = GetMessageRouter(router.GetType());
         var callbackData = CallbackData.Parse(callbackQuery?.Data);
-        if (callbackData.Action is null) return null;
-        var route = GetCallbackRoute(context.Message.RouterName, callbackData.Action);
+        var route = definedRouter.GetCallbackRoute(callbackData.Action);
         if (route is null) return null;
         
         var result = await InvokeRoute(
+            router: router,
             route: route,
-            routerData: context.Message.RouterData,
-            serviceProvider: context.ServiceProvider,
+            routerData: router.Context.Message.RouterData,
+            serviceProvider: router.Context.ServiceProvider,
             message: null,
             callbackQuery: callbackQuery,
             ct: ct);
-        if (result is IMessageRouteResult messageRouteResult) 
-            return await ProcessMessageRouteResult(messageRouteResult, context, ct);
         return result;
     }
-
-    private async Task<object?> ProcessChatRouteResult(
-        IChatRouteResult result, 
-        ITelegramChatContext context,
-        CancellationToken ct = default)
-    {
-        switch (result)
-        {
-            case SendMessageResult sendMessage:
-                return await context.SendMessage(sendMessage.Message, ct: ct);
-            case SendRouterMessageResult sendRouterMessage:
-                return await context.SendRouterMessage(sendRouterMessage.RouterName, sendRouterMessage.RouterData, ct: ct);
-            case Contexts.Chats.RouteResults.ChatRerouteResult chatRoute:
-                context.SetChatRouter(chatRoute.RouterName, chatRoute.RouterData);
-                return await InvokeChatContextIndex(context, ct);
-            default: throw new NotImplementedException(result.GetType().Name);
-        }
-    }
-
-    private async Task<object?> ProcessMessageRouteResult(
-        IMessageRouteResult result, 
-        ITelegramMessageContext context,
-        CancellationToken ct = default)
-    {
-        switch (result)
-        {
-            case ShowMessageResult showMessage:
-                return await context.ShowMessage(showMessage.Message, ct);
-            case SetKeyboardResult setKeyboard:
-                return await context.SetKeyboard(setKeyboard.Keyboard, ct);
-            case MessageRerouteResult changeMessageRouter:
-                context.SetMessageRouter(changeMessageRouter.RouterName, changeMessageRouter.RouterData);
-                return await InvokeMessageContextIndex(context, ct);
-            case Contexts.Messages.RouteResults.ChatRerouteResult chatRoute:
-                context.SetChatRouter(chatRoute.RouterName, chatRoute.RouterData);
-                return await InvokeChatContextIndex(context, ct);
-            default: throw new NotImplementedException(result.GetType().Name);
-        }
-    }
     
-    private async Task<object?> InvokeRoute(
+    internal async Task<object?> InvokeRoute(
+        object? router,
         DefinedRoute route,
         object? routerData,
         IServiceProvider serviceProvider,
@@ -350,8 +306,6 @@ public class TelegramBotRoutingSystem
         CallbackQuery? callbackQuery,
         CancellationToken ct = default)
     {
-        var router = route.Method.IsStatic || route.Method.DeclaringType is null ? null 
-            : serviceProvider.GetRequiredService(route.Method.DeclaringType);
         var parameters = ActivateRouteParameters(
             parameters: route.Parameters,
             routerData: routerData,

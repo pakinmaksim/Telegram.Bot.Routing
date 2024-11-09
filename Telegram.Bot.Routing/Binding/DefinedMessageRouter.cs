@@ -9,4 +9,10 @@ internal class DefinedMessageRouter
     public required DefinedRoute IndexRoute { get; init; }
     public required DefinedRoute? DefaultCallbackRoute { get; init; }
     public required Dictionary<string, DefinedRoute> CallbackRoutes { get; init; }
+    
+    public DefinedRoute? GetCallbackRoute(string? routeName)
+    {
+        if (routeName is null) return DefaultCallbackRoute;
+        return CallbackRoutes.TryGetValue(routeName, out var route) ? route : DefaultCallbackRoute;
+    }
 }

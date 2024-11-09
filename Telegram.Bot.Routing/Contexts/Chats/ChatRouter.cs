@@ -1,5 +1,5 @@
-﻿using Telegram.Bot.Routing.Contexts.Chats.RouteResults;
-using Telegram.Bot.Routing.Contexts.Messages;
+﻿using Telegram.Bot.Routing.Contexts.Messages;
+using Telegram.Bot.Types;
 
 namespace Telegram.Bot.Routing.Contexts.Chats;
 
@@ -8,26 +8,15 @@ namespace Telegram.Bot.Routing.Contexts.Chats;
 /// </summary>
 public abstract class ChatRouter
 {
-    protected static SendMessageResult Message(MessageStructure message) => 
-        new() { Message = message };
-    protected static SendRouterMessageResult RouterMessage(string routerName, object? routerData = null) => 
-        new() { RouterName = routerName, RouterData = routerData };
-    protected static ChatRerouteResult Reroute(string routerName, object? routerData = null) => 
-        new() { RouterName = routerName, RouterData = routerData };
-    
-    protected ITelegramChatContext Context { get; private set; } = null!;
-    
-    
-    protected SendRouterMessageResult RouterMessage<TMessageRouter>(object? routerData = null)
-        where TMessageRouter : MessageRouter
+    public ITelegramChatContext Context { get; private set; } = null!;
+
+    public async Task InvokeIndex(CancellationToken ct = default)
     {
-        var routerName = Context.Routing.GetMessageRouterName(typeof(TMessageRouter));
-        return RouterMessage(routerName, routerData);
+        await Context.Routing.InvokeChatRouterIndex(this, ct);
     }
-    protected ChatRerouteResult Reroute<TChatRouter>(object? routerData = null)
-        where TChatRouter : ChatRouter
+    
+    public async Task InvokeMessageRoute(Message? message, CancellationToken ct = default)
     {
-        var routerName = Context.Routing.GetChatRouterName(typeof(TChatRouter));
-        return Reroute(routerName, routerData);
+        await Context.Routing.InvokeMessageRoute(this, message, ct);
     }
 }
