@@ -53,7 +53,7 @@ public class TelegramContext : ITelegramContext
         AsyncServiceScope scope,
         CancellationToken ct = default)
     {
-        var context = scope.ServiceProvider.GetRequiredService<TelegramMessageContext>();
+        var context = scope.ServiceProvider.GetRequiredService<ITelegramMessageContext>();
         var router = context.GetMessageRouter();
         if (router is null) return null;
         
