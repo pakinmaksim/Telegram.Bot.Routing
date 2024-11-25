@@ -10,7 +10,7 @@ namespace Telegram.Bot.Routing.Registration;
 
 public class TelegramBotRoutingOptions
 {
-    internal Type ClientType = typeof(RoutingTelegramBotClient);
+    internal Type ClientType = typeof(TelegramBotClient);
     internal Type StorageType = typeof(InMemoryTelegramStorage);
     internal Type RouteDataSerializerType = typeof(NewtonsoftJsonRouteDataSerializer);
     internal readonly List<Assembly> AssembliesToRegister = [];
