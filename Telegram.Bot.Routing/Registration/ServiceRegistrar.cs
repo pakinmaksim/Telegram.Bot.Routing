@@ -45,7 +45,7 @@ public static class ServiceRegistrar
         TelegramBotRoutingOptions options)
     {
         services.AddSingleton(options);
-        services.AddScoped(typeof(ITelegramStorage), options.StorageType);
+        services.AddScoped(typeof(ITelegramStorage), x => x.GetRequiredService(options.StorageType));
         services.AddScoped(typeof(IRouteDataSerializer), options.RouteDataSerializerType);
         
         services.AddScoped<TelegramScopeManager>();
