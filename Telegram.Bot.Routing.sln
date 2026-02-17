@@ -2,7 +2,7 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Telegram.Bot.Routing.Example", "Telegram.Bot.Routing.Example\Telegram.Bot.Routing.Example.csproj", "{B1962F70-8C38-4A06-A53C-0BE656DF819D}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Telegram.Bot.Routing", "Telegram.Bot.Routing\Telegram.Bot.Routing.csproj", "{15DBB7A6-AE99-4BF9-80A7-C3808EF73E67}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Telegram.Bot.Routing", "Telegram.Bot.Routing\Telegram.Bot.Routing.csproj", "{658B212C-7C6A-41C0-8627-DC00114C4FB3}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -14,9 +14,9 @@ Global
 		{B1962F70-8C38-4A06-A53C-0BE656DF819D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{B1962F70-8C38-4A06-A53C-0BE656DF819D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{B1962F70-8C38-4A06-A53C-0BE656DF819D}.Release|Any CPU.Build.0 = Release|Any CPU
-		{15DBB7A6-AE99-4BF9-80A7-C3808EF73E67}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{15DBB7A6-AE99-4BF9-80A7-C3808EF73E67}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{15DBB7A6-AE99-4BF9-80A7-C3808EF73E67}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{15DBB7A6-AE99-4BF9-80A7-C3808EF73E67}.Release|Any CPU.Build.0 = Release|Any CPU
+		{658B212C-7C6A-41C0-8627-DC00114C4FB3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{658B212C-7C6A-41C0-8627-DC00114C4FB3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{658B212C-7C6A-41C0-8627-DC00114C4FB3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{658B212C-7C6A-41C0-8627-DC00114C4FB3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

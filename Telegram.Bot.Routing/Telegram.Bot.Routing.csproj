@@ -21,15 +21,15 @@
         <PackageRequireLicenseAcceptance>false</PackageRequireLicenseAcceptance>
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageOutputPath>$(OutputPath)</PackageOutputPath>
-        
-        <PackageReleaseNotes>Fixed context creation via interfaces and added RemoveKeyboard method in context</PackageReleaseNotes>
-        
+
+        <PackageReleaseNotes>Changed routing logic globally</PackageReleaseNotes>
+
         <EnablePackageValidation>true</EnablePackageValidation>
         <!--<PackageValidationBaselineVersion>1.0.0</PackageValidationBaselineVersion>-->
         <GenerateDocumentationFile>True</GenerateDocumentationFile>
         <NoWarn>$(NoWarn);CS1591</NoWarn>
     </PropertyGroup>
-    
+
     <ItemGroup>
         <None Include="$(SolutionDir)README.md" Pack="true" PackagePath=""/>
         <None Include="$(SolutionDir)LICENSE" Pack="true" PackagePath=""/>
@@ -37,10 +37,11 @@
     </ItemGroup>
     
     <ItemGroup>
-        <PackageReference Include="Telegram.Bot" Version="19.0.0" />
         <PackageReference Include="Microsoft.Extensions.Logging.Abstractions" Version="8.0.2" />
+        <PackageReference Include="Microsoft.Extensions.Hosting.Abstractions" Version="8.0.1" />
+        <PackageReference Include="Telegram.Bot" Version="22.8.1" />
         <PackageReference Include="MinVer" Version="6.0.0">
-            <PrivateAssets>all</PrivateAssets>
+        <PrivateAssets>all</PrivateAssets>
             <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
         </PackageReference>
         <PackageReference Include="DotNet.ReproducibleBuilds" Version="1.2.25">

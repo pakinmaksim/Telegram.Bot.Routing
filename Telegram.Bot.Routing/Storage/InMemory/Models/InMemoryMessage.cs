@@ -1,8 +1,9 @@
 ﻿using System.Text.Json;
+using Telegram.Bot.Routing.Storage.Models;
 
-namespace Telegram.Bot.Routing.Storage.Models;
+namespace Telegram.Bot.Routing.Storage.InMemory.Models;
 
-public interface IMessage
+public class InMemoryMessage : IMessage
 {
     public long TelegramChatId { get; set; }
     public int TelegramMessageId { get; set; }
@@ -11,4 +12,6 @@ public interface IMessage
 
     public string? Router { get; set; }
     public JsonDocument? Data { get; set; }
+    
+    public string? Text { get; set; }
 }

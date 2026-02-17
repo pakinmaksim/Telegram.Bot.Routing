@@ -1,6 +1,6 @@
 ﻿using Microsoft.AspNetCore.Mvc;
 using Telegram.Bot.Routing.Contexts.Chats;
-using Telegram.Bot.Routing.Example.Telegram.Greetings;
+using Telegram.Bot.Routing.Core;
 
 namespace Telegram.Bot.Routing.Example.Controllers;
 
@@ -10,11 +10,11 @@ public class NotifyController : Controller
 {
     [HttpPost("test")]
     public async Task Index(
-        [FromServices] TelegramBotRoutingSystem telegram,
+        [FromServices] TelegramRoutingSystem telegram,
         [FromQuery] long chatId)
     {
-        await using var scope = await telegram.CreateChatScope(chatId);
-        var context = scope.ServiceProvider.GetRequiredService<ITelegramChatContext>();
+        await using var scope = telegram.SetupTelegramScope();
+        var context = await scope.GetChatContext(chatId);
 
         await context.SendMessage("Notification test");
     }

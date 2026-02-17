@@ -1,4 +1,4 @@
-namespace Telegram.Bot.Routing.Storage.Models;
+﻿namespace Telegram.Bot.Routing.Storage.Models;
 
 public interface IUser
 {

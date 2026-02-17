@@ -1,4 +1,5 @@
 ﻿using System.Collections.Concurrent;
+using System.Text.Json;
 using Telegram.Bot.Routing.Storage.InMemory.Models;
 using Telegram.Bot.Routing.Storage.Models;
 using Telegram.Bot.Types;
@@ -7,145 +8,286 @@ namespace Telegram.Bot.Routing.Storage.InMemory;
 
 public class InMemoryTelegramStorage : ITelegramStorage
 {
-    private static readonly ConcurrentDictionary<long, UserModel> Users = new();
-    private static readonly ConcurrentDictionary<long, ChatModel> Chats = new();
-    private static readonly ConcurrentDictionary<(long, int), MessageModel> Messages = new();
-
-    public Task<IUser> ConstructUser(User original, CancellationToken ct = default)
+    private readonly ConcurrentDictionary<long, InMemoryChat> _chats = new();
+    private readonly ConcurrentDictionary<long, InMemoryUser> _users = new();
+    private readonly ConcurrentDictionary<(long chatId, int messageId), InMemoryMessage> _messages = new();
+    
+    public Task<IChat?> GetChat(long chatId, CancellationToken ct = default)
     {
-        return Task.FromResult<IUser>(new UserModel()
-        {
-            TelegramId = original.Id,
-        });
+        ct.ThrowIfCancellationRequested();
+        return Task.FromResult(_chats.TryGetValue(chatId, out var chat) ? (IChat?)chat : null);
+    }
+
+    public Task<IChat> UpsertChat(Chat origin, string? router, JsonDocument? data, CancellationToken ct = default)
+    {
+        ct.ThrowIfCancellationRequested();
+
+        var id = origin.Id;
+
+        var updated = _chats.AddOrUpdate(
+            id,
+            addValueFactory: _ =>
+            {
+                var created = new InMemoryChat
+                {
+                    TelegramId = id,
+                    Router = router,
+                    Data = data
+                };
+                ApplyOrigin(created, origin);
+                return created;
+            },
+            updateValueFactory: (_, existing) =>
+            {
+                existing.Router = router;
+                existing.Data = data;
+                ApplyOrigin(existing, origin);
+                return existing;
+            });
+
+        return Task.FromResult((IChat)updated);
+    }
+
+    public Task UpdateChat(IChat stored, Chat? origin = null, CancellationToken ct = default)
+    {
+        ct.ThrowIfCancellationRequested();
+
+        // Ensure it exists and then copy fields.
+        var chat = _chats.AddOrUpdate(
+            stored.TelegramId,
+            addValueFactory: _ =>
+            {
+                var created = new InMemoryChat
+                {
+                    TelegramId = stored.TelegramId,
+                    Router = stored.Router,
+                    Data = stored.Data
+                };
+                CopyFrom(created, stored);
+                if (origin is not null) ApplyOrigin(created, origin);
+                return created;
+            },
+            updateValueFactory: (_, existing) =>
+            {
+                existing.Router = stored.Router;
+                existing.Data = stored.Data;
+                CopyFrom(existing, stored);
+                if (origin is not null) ApplyOrigin(existing, origin);
+                return existing;
+            });
+
+        return Task.CompletedTask;
+    }
+
+    public Task<IMessage?> GetMessage(long chatId, int messageId, CancellationToken ct = default)
+    {
+        ct.ThrowIfCancellationRequested();
+
+        return Task.FromResult(
+            _messages.TryGetValue((chatId, messageId), out var msg) ? (IMessage?)msg : null
+        );
+    }
+
+    public Task<IMessage> UpsertMessage(Message origin, string? router, JsonDocument? data, CancellationToken ct = default)
+    {
+        ct.ThrowIfCancellationRequested();
+
+        var chatId = origin.Chat.Id;
+        var messageId = origin.MessageId;
+        var key = (chatId, messageId);
+
+        var updated = _messages.AddOrUpdate(
+            key,
+            addValueFactory: _ =>
+            {
+                var created = new InMemoryMessage
+                {
+                    TelegramChatId = chatId,
+                    TelegramMessageId = messageId,
+                    Router = router,
+                    Data = data
+                };
+                ApplyOrigin(created, origin);
+                return created;
+            },
+            updateValueFactory: (_, existing) =>
+            {
+                existing.Router = router;
+                existing.Data = data;
+                ApplyOrigin(existing, origin);
+                return existing;
+            });
+
+        return Task.FromResult((IMessage)updated);
+    }
+
+    public Task UpdateMessage(IMessage stored, Message? origin = null, CancellationToken ct = default)
+    {
+        ct.ThrowIfCancellationRequested();
+
+        var key = (stored.TelegramChatId, stored.TelegramMessageId);
+
+        _messages.AddOrUpdate(
+            key,
+            addValueFactory: _ =>
+            {
+                var created = new InMemoryMessage
+                {
+                    TelegramChatId = stored.TelegramChatId,
+                    TelegramMessageId = stored.TelegramMessageId,
+                    Router = stored.Router,
+                    Data = stored.Data
+                };
+                CopyFrom(created, stored);
+                if (origin is not null) ApplyOrigin(created, origin);
+                return created;
+            },
+            updateValueFactory: (_, existing) =>
+            {
+                existing.Router = stored.Router;
+                existing.Data = stored.Data;
+                CopyFrom(existing, stored);
+                if (origin is not null) ApplyOrigin(existing, origin);
+                return existing;
+            });
+
+        return Task.CompletedTask;
     }
 
     public Task<IUser?> GetUser(long userId, CancellationToken ct = default)
     {
-        var model = Users.GetValueOrDefault(userId);
-        return Task.FromResult<IUser?>(model is null ? null : Copy(model));
+        ct.ThrowIfCancellationRequested();
+        return Task.FromResult(_users.TryGetValue(userId, out var user) ? (IUser?)user : null);
     }
 
-    public Task SetUser(IUser user, CancellationToken ct = default)
+    public Task<IUser> UpsertUser(User origin, CancellationToken ct = default)
     {
-        if (Users.TryGetValue(user.TelegramId, out var exists))
-        {
-            exists.TelegramId = user.TelegramId;
-        }
-        else
-        {
-            Users.TryAdd(user.TelegramId, (UserModel) user);
-        }
-        return Task.CompletedTask;
-    }
-    
-    public Task<IChat> ConstructChat(Chat original, CancellationToken ct = default)
-    {
-        return Task.FromResult<IChat>(new ChatModel()
-        {
-            TelegramId = original.Id,
-            RouterName = null,
-            RouterData = null,
-            RouteName = null
-        });
-    }
-    public Task<IChat?> GetChat(long chatId, CancellationToken ct = default)
-    {
-        var model = Chats.GetValueOrDefault(chatId);
-        return Task.FromResult<IChat?>(model is null ? null : Copy(model));
-    }
-    public Task SetChat(IChat chat, CancellationToken ct = default)
-    {
-        if (Chats.TryGetValue(chat.TelegramId, out var exists))
-        {
-            exists.TelegramId = chat.TelegramId;
-            exists.RouterName = chat.RouterName;
-            exists.RouterData = chat.RouterData;
-            exists.RouteName = chat.RouteName;
-        }
-        else
-        {
-            Chats.TryAdd(chat.TelegramId, (ChatModel) chat);
-        }
-        return Task.CompletedTask;
-    }
-    
-    public Task<IMessage> ConstructMessage(Message original, CancellationToken ct = default)
-    {
-        return Task.FromResult<IMessage>(new MessageModel()
-        {
-            ChatTelegramId = original.Chat.Id,
-            TelegramId = original.MessageId,
-            Text = original.Text ?? "",
-            RouterName = null,
-            RouterData = null
-        });
-    }
-    public Task<IMessage> ConstructMessage(long chatId, int messageId, string routerName, string? routerData, CancellationToken ct = default)
-    {
-        return Task.FromResult<IMessage>(new MessageModel()
-        {
-            ChatTelegramId = chatId,
-            TelegramId = messageId,
-            Text = "",
-            RouterName = routerName,
-            RouterData = routerData
-        });
-    }
-    public Task<IMessage?> GetMessage(long chatId, int messageId, CancellationToken ct = default)
-    {
-        var key = (chatTelegramId: chatId, telegramId: messageId);
-        
-        var model = Messages.GetValueOrDefault(key);
-        return Task.FromResult<IMessage?>(model is null ? null : Copy(model));
+        ct.ThrowIfCancellationRequested();
+
+        var id = origin.Id;
+
+        var updated = _users.AddOrUpdate(
+            id,
+            addValueFactory: _ =>
+            {
+                var created = new InMemoryUser { TelegramId = id };
+                ApplyOrigin(created, origin);
+                return created;
+            },
+            updateValueFactory: (_, existing) =>
+            {
+                ApplyOrigin(existing, origin);
+                return existing;
+            });
+
+        return Task.FromResult((IUser)updated);
     }
 
-    public Task SetMessage(IMessage message, CancellationToken ct = default)
+    public Task UpdateUser(IUser stored, User? origin = null, CancellationToken ct = default)
     {
-        var key = (message.ChatTelegramId, message.TelegramId);
-        if (Messages.TryGetValue(key, out var exists))
-        {
-            exists.ChatTelegramId = message.ChatTelegramId;
-            exists.TelegramId = message.TelegramId;
-            exists.Text = message.Text;
-            exists.RouterName = message.RouterName;
-            exists.RouterData = message.RouterData;
-        }
-        else
-        {
-            Messages.TryAdd(key, (MessageModel) message);
-        }
+        ct.ThrowIfCancellationRequested();
+
+        _users.AddOrUpdate(
+            stored.TelegramId,
+            addValueFactory: _ =>
+            {
+                var created = new InMemoryUser { TelegramId = stored.TelegramId };
+                CopyFrom(created, stored);
+                if (origin is not null) ApplyOrigin(created, origin);
+                return created;
+            },
+            updateValueFactory: (_, existing) =>
+            {
+                CopyFrom(existing, stored);
+                if (origin is not null) ApplyOrigin(existing, origin);
+                return existing;
+            });
+
         return Task.CompletedTask;
     }
 
+    // -----------------------
+    // Mapping / Copy helpers
+    // -----------------------
 
-    private UserModel Copy(UserModel user)
+    private static void CopyFrom(InMemoryChat target, IChat source)
     {
-        return new UserModel()
-        {
-            TelegramId = user.TelegramId
-        };
+        target.TelegramId = source.TelegramId;
+        target.Router = source.Router;
+
+        // Clone to avoid holding onto a document that may be disposed/owned elsewhere
+        target.Data = CloneJson(source.Data);
+
+        // If source is also InMemoryChat, keep Title too
+        if (source is InMemoryChat mem)
+            target.Title = mem.Title;
     }
 
-    private ChatModel Copy(ChatModel chat)
+    private static void CopyFrom(InMemoryMessage target, IMessage source)
     {
-        return new ChatModel()
-        {
-            TelegramId = chat.TelegramId,
-            RouterName = chat.RouterName,
-            RouterData = chat.RouterData,
-            RouteName = chat.RouteName
-        };
+        target.TelegramChatId = source.TelegramChatId;
+        target.TelegramMessageId = source.TelegramMessageId;
+        target.TelegramFromId = source.TelegramFromId;
+        target.Date = source.Date;
+
+        target.Router = source.Router;
+        target.Data = CloneJson(source.Data);
+
+        if (source is InMemoryMessage mem)
+            target.Text = mem.Text;
     }
 
-    private MessageModel Copy(MessageModel chat)
+    private static void CopyFrom(InMemoryUser target, IUser source)
     {
-        return new MessageModel()
-        {
-            ChatTelegramId = chat.ChatTelegramId,
-            TelegramId = chat.TelegramId,
-            Text = chat.Text,
-            RouterName = chat.RouterName,
-            RouterData = chat.RouterData,
-        };
+        target.TelegramId = source.TelegramId;
+
+        if (source is InMemoryUser mem)
+            target.Username = mem.Username;
+    }
+
+    private static void ApplyOrigin(InMemoryChat target, Chat origin)
+    {
+        target.TelegramId = origin.Id;
+
+        // Telegram.Bot.Types.Chat.Title may be null depending on chat type
+        target.Title = origin.Title;
+    }
+
+    private static void ApplyOrigin(InMemoryMessage target, Message origin)
+    {
+        target.TelegramChatId = origin.Chat.Id;
+        target.TelegramMessageId = origin.MessageId;
+        target.TelegramFromId = origin.From?.Id ?? 0;
+        target.Date = origin.Date;
+
+        target.Text = origin.Text;
+    }
+
+    private static void ApplyOrigin(InMemoryUser target, User origin)
+    {
+        target.TelegramId = origin.Id;
+        target.Username = origin.Username;
+    }
+
+    private static JsonDocument? CloneJson(JsonDocument? doc)
+    {
+        if (doc is null) return null;
+
+        // Safe clone: serialize to raw text then parse.
+        // This avoids referencing internal buffers owned by the original document.
+        var raw = doc.RootElement.GetRawText();
+        return JsonDocument.Parse(raw);
+    }
+
+    private static TImplementation ThrowIfInvalidModel<TInterface, TImplementation>(TInterface i)
+    {
+        if (i is not TImplementation incoming)
+            throw new InvalidCastException($"Expected {nameof(TImplementation)} but got {i!.GetType().Name}.");
+        return incoming;
+    }
+
+    private static JsonDocument? Clone(JsonDocument? original)
+    {
+        return original is null ? null : JsonDocument.Parse(original.RootElement.GetRawText());
     }
 }

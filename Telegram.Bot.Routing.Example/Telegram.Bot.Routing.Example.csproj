@@ -11,9 +11,4 @@
       <ProjectReference Include="..\Telegram.Bot.Routing\Telegram.Bot.Routing.csproj" />
     </ItemGroup>
 
-    <ItemGroup>
-      <PackageReference Include="Telegram.Bot" Version="19.0.0" />
-      <PackageReference Include="Telegram.Bot.Extensions.Markup" Version="1.0.2" />
-    </ItemGroup>
-
 </Project>

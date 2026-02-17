@@ -1,206 +1,120 @@
-﻿using Microsoft.Extensions.DependencyInjection;
-using Telegram.Bot.Routing.Contexts.Chats;
-using Telegram.Bot.Routing.Contexts.Messages;
+﻿using System.Text.Json;
+using Microsoft.Extensions.DependencyInjection;
+using Telegram.Bot.Routing.Contexts.BotMessages;
+using Telegram.Bot.Routing.Core;
+using Telegram.Bot.Routing.Core.Messages;
+using Telegram.Bot.Routing.Routers;
 using Telegram.Bot.Routing.Storage;
 using Telegram.Bot.Routing.Storage.Models;
-using Telegram.Bot.Routing.Storage.Serializers;
 using Telegram.Bot.Types;
+using Telegram.Bot.Types.Enums;
 using Telegram.Bot.Types.ReplyMarkups;
 
 namespace Telegram.Bot.Routing.Contexts;
 
-public class TelegramContext : ITelegramContext
+public class TelegramContext
 {
-    public IServiceProvider ServiceProvider { get; private set; }
-    public TelegramBotRoutingSystem Routing { get; private set; }
-    public ITelegramBotClient Bot { get; private set; }
-    public ITelegramStorage Storage { get; private set; }
-    public IRouteDataSerializer Serializer { get; private set; }
+    public TelegramRoutingSystem System { get; internal set; } = null!;
+    public TelegramScope Scope { get; internal set; } = null!;
+    public Update? Update => Scope.Update;
 
-    public Update? Update { get; internal set; }
-    
-    public TelegramContext(
-        IServiceProvider serviceProvider,
-        TelegramBotRoutingSystem routing,
-        ITelegramBotClient bot,
-        ITelegramStorage storage,
-        IRouteDataSerializer serializer)
+    internal virtual Task Store(CancellationToken ct = default) => Task.CompletedTask;
+
+    public async Task<IUser> GetUserModel(User origin, CancellationToken ct = default)
     {
-        ServiceProvider = serviceProvider;
-        Routing = routing;
-        Bot = bot;
-        Storage = storage;
-        Serializer = serializer;
+        var userId = origin.Id;
+        var stored = await Scope.GetUser(userId, ct);
+        if (stored is null) stored = await Scope.UpsertUser(origin, ct);
+        else await Scope.UpdateUser(stored, origin, ct);
+        return stored;
+    }
+    public virtual async Task<IUser?> GetUserModel(long userId, CancellationToken ct = default)
+    {
+        return await Scope.GetUser(userId, ct);
     }
 
-    public async Task<IMessage> SendMessage(
+    public async Task<IChat> GetChatModel(Chat origin, CancellationToken ct = default)
+    {
+        var chatId = origin.Id;
+        var stored = await Scope.GetChat(chatId, ct);
+        if (stored is null)
+        {
+            stored = await Scope.UpsertChat(origin, System.Config.DefaultChatRouterName, null, ct);
+        }
+        else await Scope.UpdateChat(stored, origin, ct);
+        return stored;
+    }
+    public virtual async Task<IChat?> GetChatModel(long chatId, CancellationToken ct = default)
+    {
+        return await Scope.GetChat(chatId, ct);
+    }
+
+    public async Task<IMessage> GetMessageModel(Message origin, CancellationToken ct = default)
+    {
+        var chatId = origin.Chat.Id;
+        var messageId = origin.MessageId;
+        var stored = await Scope.GetMessage(chatId, messageId, ct);
+        if (stored is null)
+        {
+            var router = origin.From?.Id == System.Bot.BotId ? System.Config.DefaultBotMessageRouterName : null; 
+            stored = await Scope.UpsertMessage(origin, router, null, ct);
+        }
+        else await Scope.UpdateMessage(stored, origin, ct);
+        return stored;
+    }
+    public virtual async Task<IMessage?> GetMessageModel(long chatId, int messageId, CancellationToken ct = default)
+    {
+        return await Scope.GetMessage(chatId, messageId, ct);
+    }
+    
+    
+    protected async Task<IMessage> SendMessageProtected(
         long chatId,
-        MessageStructure messageStructure,
-        string? routerName = null,
-        object? routerData = null,
+        NewBotMessage message,
+        string? router,
+        object? data,
         CancellationToken ct = default)
     {
-        var message = await Bot.SendTextMessageAsync(
+        var sentMessage = await System.Bot.SendMessage(
             chatId: chatId,
-            text: messageStructure.Text,
-            replyMarkup: messageStructure.ReplyMarkup,
-            parseMode: Routing.Config.DefaultParseMode,
+            text: message.Text,
+            parseMode: message.ParseMode ?? System.Config.DefaultParseMode,
+            replyParameters: message.ReplyParameters,
+            replyMarkup: message.ReplyMarkup,
+            linkPreviewOptions: message.LinkPreviewOptions,
+            messageThreadId: message.MessageThreadId,
+            entities: message.Entities,
+            disableNotification: message.DisableNotification,
+            protectContent: message.ProtectContent,
+            messageEffectId: message.MessageEffectId,
+            businessConnectionId: message.BusinessConnectionId,
+            allowPaidBroadcast: message.AllowPaidBroadcast,
+            directMessagesTopicId: message.DirectMessagesTopicId,
+            suggestedPostParameters: message.SuggestedPostParameters,
             cancellationToken: ct);
-        return await ReconstructMessage(message, routerName, routerData, ct);
+        var dataSerialized = JsonSerializer.SerializeToDocument(data, System.Config.JsonSerializerOptions);
+        return await Scope.UpsertMessage(sentMessage, router, dataSerialized, ct);
     }
     
-    protected async Task<IMessage?> SendRouterMessage(
-        AsyncServiceScope scope,
-        CancellationToken ct = default)
-    {
-        var context = scope.ServiceProvider.GetRequiredService<ITelegramMessageContext>();
-        var router = context.GetMessageRouter();
-        if (router is null) return null;
-        
-        await router.InvokeIndex(ct);
-        
-        await context.SaveMessage(ct);
-        await context.SaveChat(ct);
-        return context.Message;
-    }
-
-    public virtual async Task<IMessage?> SendRouterMessage(
-        long chatId,
-        string routerName,
-        object? routerData = null,
-        CancellationToken ct = default)
-    {
-        await using var scope = await Routing.CreateNewMessageScope(chatId, routerName, routerData, ct);
-        return await SendRouterMessage(scope, ct);
-    }
-
-    public async Task<IMessage> EditMessage(
+    protected async Task<IMessage> EditMessageProtected(
         long chatId,
         int messageId,
-        MessageStructure messageStructure,
-        string? routerName = null,
-        object? routerData = null,
+        EditBotMessage message,
+        string? router,
+        object? data,
         CancellationToken ct = default)
     {
-        var message = await Bot.EditMessageTextAsync(
+        var sentMessage = await System.Bot.EditMessageText(
             chatId: chatId,
             messageId: messageId,
-            text: messageStructure.Text,
-            replyMarkup: messageStructure.ReplyMarkup,
-            parseMode: Routing.Config.DefaultParseMode,
+            text: message.Text,
+            parseMode: message.ParseMode ?? System.Config.DefaultParseMode,
+            replyMarkup: message.ReplyMarkup,
+            linkPreviewOptions: message.LinkPreviewOptions,
+            entities: message.Entities,
+            businessConnectionId: message.BusinessConnectionId,
             cancellationToken: ct);
-        return await ReconstructMessage(message, routerName, routerData, ct);
-    }
-
-    public async Task<IMessage> SetKeyboard(
-        long chatId,
-        int messageId,
-        InlineKeyboardMarkup keyboard,
-        string? routerName = null,
-        object? routerData = null,
-        CancellationToken ct = default)
-    {
-        var message = await Bot.EditMessageReplyMarkupAsync(
-            chatId: chatId,
-            messageId: messageId,
-            replyMarkup: keyboard,
-            cancellationToken: ct);
-        return await ReconstructMessage(message, routerName, routerData, ct);
-    }
-
-    public async Task<IMessage> RemoveKeyboard(
-        long chatId, 
-        int messageId, 
-        string? routerName = null, 
-        object? routerData = null,
-        CancellationToken ct = default)
-    {
-        return await SetKeyboard(
-            chatId: chatId,
-            messageId: messageId,
-            keyboard: new InlineKeyboardMarkup(Array.Empty<InlineKeyboardButton[]>()),
-            routerName: routerName,
-            routerData: routerData,
-            ct: ct);
-    }
-
-    public async Task<IUser> ReconstructUser(
-        User origin,
-        CancellationToken ct = default)
-    {
-        var constructed = await Storage.ConstructUser(origin, ct);
-        await Storage.SetUser(constructed, ct);
-        return constructed;
-    }
-    
-    public async Task<IChat> ReconstructChat(Chat origin, CancellationToken ct = default)
-    {
-        var exists = await Storage.GetChat(origin.Id, ct);
-        
-        string? routerName;
-        string? routerData;
-        string? routeName;
-        if (exists != null)
-        {
-            routerName = exists.RouterName;
-            routerData = exists.RouterData;
-            routeName = exists.RouteName;
-        }
-        else
-        {
-            routerName = Routing.Config.DefaultChatRouterName;
-            routerData = null;
-            routeName = null;
-        }
-        
-        return await ReconstructChat(origin, routerName, routerData, routeName, ct);
-    }
-
-    public async Task<IChat> ReconstructChat(
-        Chat origin,
-        string? routerName,
-        string? routerData,
-        string? routeName,
-        CancellationToken ct = default)
-    {
-        var constructed = await Storage.ConstructChat(origin, ct);
-        constructed.RouterName = routerName;
-        constructed.RouterData = routerData;
-        constructed.RouteName = routeName;
-        await Storage.SetChat(constructed, ct);
-        return constructed;
-    }
-    
-    public async Task<IMessage> ReconstructMessage(Message origin, CancellationToken ct = default)
-    {
-        var exists = await Storage.GetMessage(origin.Chat.Id, origin.MessageId, ct);
-        
-        string? routerName;
-        string? routerData;
-        if (exists != null)
-        {
-            routerName = exists.RouterName;
-            routerData = exists.RouterData;
-        }
-        else
-        {
-            routerName = Routing.Config.DefaultMessageRouterName;
-            routerData = null;
-        }
-        
-        return await ReconstructMessage(origin, routerName, routerData, ct);
-    }
-    
-    public async Task<IMessage> ReconstructMessage(
-        Message origin,
-        string? routerName,
-        object? routerData,
-        CancellationToken ct = default)
-    {
-        var constructed = await Storage.ConstructMessage(origin, ct);
-        constructed.RouterName = routerName;
-        constructed.RouterData = Serializer.SerializeNullable(routerData);
-        await Storage.SetMessage(constructed, ct);
-        return constructed;
+        var dataSerialized = JsonSerializer.SerializeToDocument(data, System.Config.JsonSerializerOptions);
+        return await Scope.UpsertMessage(sentMessage, router, dataSerialized, ct);
     }
 }
