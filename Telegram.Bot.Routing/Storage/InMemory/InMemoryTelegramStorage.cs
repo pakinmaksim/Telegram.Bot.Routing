@@ -278,16 +278,4 @@ public class InMemoryTelegramStorage : ITelegramStorage
         var raw = doc.RootElement.GetRawText();
         return JsonDocument.Parse(raw);
     }
-
-    private static TImplementation ThrowIfInvalidModel<TInterface, TImplementation>(TInterface i)
-    {
-        if (i is not TImplementation incoming)
-            throw new InvalidCastException($"Expected {nameof(TImplementation)} but got {i!.GetType().Name}.");
-        return incoming;
-    }
-
-    private static JsonDocument? Clone(JsonDocument? original)
-    {
-        return original is null ? null : JsonDocument.Parse(original.RootElement.GetRawText());
-    }
 }

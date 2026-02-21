@@ -10,6 +10,8 @@ public abstract class ChatRouter : BaseRouter
         => Task.CompletedTask;
     public virtual Task OnUserMessage(UserMessageContext context, CancellationToken ct = default) 
         => Task.CompletedTask;
+    public virtual Task OnChatMemberUpdated(ChatMemberUpdatedContext context, CancellationToken ct = default) 
+        => Task.CompletedTask;
     public virtual Task OnCallbackQuery(CallbackQueryContext context, CancellationToken ct = default)
         => Task.CompletedTask;
     public virtual Task OnRouteOut(ChatContext context, CancellationToken ct = default) 
@@ -30,6 +32,11 @@ public abstract class ChatRouter<TData> : ChatRouter
     public override async Task OnUserMessage(UserMessageContext context, CancellationToken ct = default)
         => await UsingChatData(OnUserMessage, context, ct);
     public virtual Task OnUserMessage(UserMessageContext context, TData data, CancellationToken ct = default)
+        => Task.CompletedTask;
+
+    public override async Task OnChatMemberUpdated(ChatMemberUpdatedContext context, CancellationToken ct = default)
+        => await UsingChatData(OnChatMemberUpdated, context, ct);
+    public virtual Task OnChatMemberUpdated(ChatMemberUpdatedContext context, TData data, CancellationToken ct = default)
         => Task.CompletedTask;
 
     public override async Task OnCallbackQuery(CallbackQueryContext context, CancellationToken ct = default)

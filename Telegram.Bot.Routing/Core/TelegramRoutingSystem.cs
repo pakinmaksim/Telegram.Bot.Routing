@@ -45,6 +45,7 @@ public class TelegramRoutingSystem
             {
                 UpdateType.Message => HandleMessage(scope, ct),
                 UpdateType.CallbackQuery => HandleCallbackQuery(scope, ct),
+                UpdateType.MyChatMember => HandleMyChatMember(scope, ct),
                 _ => Task.CompletedTask
             });
         }
@@ -74,6 +75,22 @@ public class TelegramRoutingSystem
         var router = context.GetCurrentChatRouter();
         if (router is null) return;
         await router.OnUserMessage(context, ct);
+        
+        // Save state
+        await context.Store(ct);
+    }
+
+    private async Task HandleMyChatMember(TelegramScope scope, CancellationToken ct = default)
+    {
+        // Setup current context
+        var context = new ChatMemberUpdatedContext { System = this, Scope = scope };
+        await context.InitializeFromUpdate(ct);
+        if (context.ChatModel.Router is null) return;
+        
+        // Call route
+        var router = context.GetCurrentChatRouter();
+        if (router is null) return;
+        await router.OnChatMemberUpdated(context, ct);
         
         // Save state
         await context.Store(ct);

@@ -22,7 +22,7 @@
         <PackageReadmeFile>README.md</PackageReadmeFile>
         <PackageOutputPath>$(OutputPath)</PackageOutputPath>
 
-        <PackageReleaseNotes>Changed routing logic globally</PackageReleaseNotes>
+        <PackageReleaseNotes>Added ChatMemberUpdated</PackageReleaseNotes>
 
         <EnablePackageValidation>true</EnablePackageValidation>
         <!--<PackageValidationBaselineVersion>1.0.0</PackageValidationBaselineVersion>-->
