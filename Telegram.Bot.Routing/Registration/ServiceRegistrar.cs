@@ -97,9 +97,8 @@ public class ServiceRegistrar
         TelegramRoutingConfig config)
     {
         services.AddSingleton(config);
-        if (config.StorageType == typeof(InMemoryTelegramStorage))
-            services.AddSingleton<InMemoryTelegramStorage>();
-        services.AddScoped(typeof(ITelegramStorage), x => x.GetRequiredService(config.StorageType));
+        var inMemoryStorage = new InMemoryTelegramStorage();
+        services.AddScoped(typeof(ITelegramStorage), x => x.GetService<ITelegramStorage>() ?? inMemoryStorage);
         
         services.AddSingleton<TelegramRoutingSystem>();
         if (config.PoolingEnabled)

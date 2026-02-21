@@ -10,10 +10,9 @@ namespace Telegram.Bot.Routing.Core;
 
 public class TelegramRoutingConfig
 {
-    public bool PoolingEnabled { get; set; }
-    public ParseMode DefaultParseMode { get; set; } = ParseMode.None;
-    public JsonSerializerOptions JsonSerializerOptions { get; set; } = new();
-    internal Type StorageType = typeof(InMemoryTelegramStorage);
+    internal bool PoolingEnabled { get; set; }
+    internal ParseMode DefaultParseMode { get; set; } = ParseMode.None;
+    internal JsonSerializerOptions JsonSerializerOptions { get; set; } = new();
     internal readonly List<Assembly> AssembliesToRegister = [];
     internal string? DefaultChatRouterName;
     internal readonly Dictionary<string, DefinedChatRouter> ChatRouters = [];
@@ -36,12 +35,6 @@ public class TelegramRoutingConfig
     public TelegramRoutingConfig UseJsonSerializerOptions(JsonSerializerOptions options)
     {
         JsonSerializerOptions = options;
-        return this;
-    }
-
-    public TelegramRoutingConfig UseStorage<T>() where T : ITelegramStorage
-    {
-        StorageType = typeof(T);
         return this;
     }
     
