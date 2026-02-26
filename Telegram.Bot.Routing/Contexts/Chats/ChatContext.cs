@@ -27,7 +27,7 @@ public class ChatContext : TelegramContext
     }
     
 
-    internal override async Task Store(CancellationToken ct = default)
+    public override async Task Store(CancellationToken ct = default)
     {
         await Scope.UpdateChat(ChatModel, null, ct);
     }
@@ -83,7 +83,11 @@ public class ChatContext : TelegramContext
 
         return currentRouter;
     }
-    
+
+    public bool IsPrivateChat()
+    {
+        return ChatModel.TelegramId > 0;
+    }
     
     public async Task<IMessage?> SendMessage<TRouter, TData>(
         TData data,

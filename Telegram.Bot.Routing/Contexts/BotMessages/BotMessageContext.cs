@@ -46,7 +46,7 @@ public class BotMessageContext : ChatContext
         return await base.GetMessageModel(chatId, messageId, ct);
     }
 
-    internal override async Task Store(CancellationToken ct = default)
+    public override async Task Store(CancellationToken ct = default)
     {
         await base.Store(ct);
         await Scope.UpdateMessage(BotMessageModel, null, ct);

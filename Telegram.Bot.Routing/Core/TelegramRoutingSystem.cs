@@ -85,15 +85,27 @@ public class TelegramRoutingSystem
         // Setup current context
         var context = new ChatMemberUpdatedContext { System = this, Scope = scope };
         await context.InitializeFromUpdate(ct);
-        if (context.ChatModel.Router is null) return;
+
+
+        if (context.IsPrivateChat() && context.ChatMember.NewChatMember.Status == ChatMemberStatus.Kicked)
+        {
+            context.ChatModel.Router = IChat.DELETED_ROUTER;
+            context.ChatModel.Data = null;
+            
+            await context.Store(ct);
+        }
+        else
+        {
+            if (context.ChatModel.Router is null) return;
         
-        // Call route
-        var router = context.GetCurrentChatRouter();
-        if (router is null) return;
-        await router.OnChatMemberUpdated(context, ct);
+            // Call route
+            var router = context.GetCurrentChatRouter();
+            if (router is null) return;
+            await router.OnChatMemberUpdated(context, ct);
         
-        // Save state
-        await context.Store(ct);
+            // Save state
+            await context.Store(ct);
+        }
     }
 
     private async Task HandleCallbackQuery(TelegramScope scope, CancellationToken ct = default)

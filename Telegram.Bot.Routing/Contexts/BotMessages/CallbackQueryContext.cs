@@ -18,7 +18,7 @@ public class CallbackQueryContext : BotMessageContext
         UserModel = await GetUserModel(CallbackQuery.From, ct);
     }
     
-    internal override async Task Store(CancellationToken ct = default)
+    public override async Task Store(CancellationToken ct = default)
     {
         await base.Store(ct);
         if (UserModel != null) await Scope.UpdateUser(UserModel, null, ct);

@@ -18,7 +18,7 @@ public class TelegramContext
     public TelegramScope Scope { get; internal set; } = null!;
     public Update? Update => Scope.Update;
 
-    internal virtual Task Store(CancellationToken ct = default) => Task.CompletedTask;
+    public virtual Task Store(CancellationToken ct = default) => Task.CompletedTask;
 
     public async Task<IUser> GetUserModel(User origin, CancellationToken ct = default)
     {
@@ -37,7 +37,7 @@ public class TelegramContext
     {
         var chatId = origin.Id;
         var stored = await Scope.GetChat(chatId, ct);
-        if (stored is null)
+        if (stored is null || stored.Router == IChat.DELETED_ROUTER)
         {
             stored = await Scope.UpsertChat(origin, System.Config.DefaultChatRouterName, null, ct);
         }

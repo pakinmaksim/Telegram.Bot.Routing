@@ -15,7 +15,7 @@ public class ChatMemberUpdatedContext : ChatContext
         UserModel = await GetUserModel(ChatMember.From, ct);
     }
     
-    internal override async Task Store(CancellationToken ct = default)
+    public override async Task Store(CancellationToken ct = default)
     {
         await base.Store(ct);
         await Scope.UpdateUser(UserModel, null, ct);
