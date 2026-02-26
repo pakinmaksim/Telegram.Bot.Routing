@@ -66,7 +66,7 @@ public class ChatContext : TelegramContext
         var name = System.GetChatRouterName(routerType);
         return await RouteChatTo(name, data, ct);
     }
-    public async Task<ChatRouter?> RouteChatTo(string? name, object? data = null, CancellationToken ct = default)
+    public virtual async Task<ChatRouter?> RouteChatTo(string? name, object? data = null, CancellationToken ct = default)
     {
         var currentRouter = GetCurrentChatRouter();
         if (ChatModel.Router == name) return currentRouter;
@@ -229,7 +229,7 @@ public class ChatContext : TelegramContext
         return await SendMessageProtected(
             chatId: ChatModel.TelegramId,
             message: message,
-            router: ChatModel.Router,
+            router: null,
             data: null,
             ct: ct);
     }

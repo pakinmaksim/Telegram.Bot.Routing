@@ -25,7 +25,7 @@ public class BotMessageContext : ChatContext
             throw new ArgumentException($"Message with Id = ({ChatModel.TelegramId}, {messageId}) not found");
         BotMessageModel = model;
     }
-    internal void InitializeUnsentMessage(string router, object? data)
+    internal void InitializeUnsentMessage(string? router, object? data)
     {
         var dataSerialized = JsonSerializer.SerializeToDocument(data, System.Config.JsonSerializerOptions);
         BotMessageModel = new UnsendMessage()

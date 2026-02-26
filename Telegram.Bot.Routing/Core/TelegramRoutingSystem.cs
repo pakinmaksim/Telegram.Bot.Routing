@@ -113,18 +113,20 @@ public class TelegramRoutingSystem
         // Setup current context
         var context = new CallbackQueryContext { System = this, Scope = scope };
         await context.InitializeFromUpdate(ct);
-        if (context.BotMessageModel.Router is null) return;
 
         // Call route
-        if (GetDefinedBotMessageRouter(context.BotMessageModel.Router) is { } definedBotMessageRouter)
+        if (context.BotMessageModel.Router is null)
+        {
+            if (GetDefinedChatRouter(context.ChatModel.Router) is { } definedChatRouter)
+            {
+                var router = context.Scope.GetChatRouter(definedChatRouter.Name);
+                if (router is null) return;
+                await router.OnCallbackQuery(context, ct);
+            }
+        }
+        else if (GetDefinedBotMessageRouter(context.BotMessageModel.Router) is { } definedBotMessageRouter)
         {
             var router = context.Scope.GetBotMessageRouter(definedBotMessageRouter.Name);
-            if (router is null) return;
-            await router.OnCallbackQuery(context, ct);
-        }
-        else if (GetDefinedChatRouter(context.BotMessageModel.Router) is { } definedChatRouter)
-        {
-            var router = context.Scope.GetChatRouter(definedChatRouter.Name);
             if (router is null) return;
             await router.OnCallbackQuery(context, ct);
         }
