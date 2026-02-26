@@ -1,5 +1,6 @@
 ﻿using System.Reflection;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Telegram.Bot.Routing.Contexts;
 using Telegram.Bot.Routing.Contexts.BotMessages;
 using Telegram.Bot.Routing.Contexts.Chats;
@@ -97,8 +98,7 @@ public class ServiceRegistrar
         TelegramRoutingConfig config)
     {
         services.AddSingleton(config);
-        var inMemoryStorage = new InMemoryTelegramStorage();
-        services.AddScoped(typeof(ITelegramStorage), x => x.GetService<ITelegramStorage>() ?? inMemoryStorage);
+        services.TryAddSingleton<ITelegramStorage, InMemoryTelegramStorage>();
         
         services.AddSingleton<TelegramRoutingSystem>();
         if (config.PoolingEnabled)

@@ -27,7 +27,7 @@ public class TelegramHostingService : IHostedService
         _bot.StartReceiving(
             UpdateHandler, PollingErrorHandler, new ReceiverOptions()
             {
-                AllowedUpdates = [ UpdateType.Message, UpdateType.CallbackQuery ]
+                AllowedUpdates = [ UpdateType.Message, UpdateType.CallbackQuery, UpdateType.ChatMember ]
             },
             cancellationToken: cancellationToken);
         
